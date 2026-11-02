@@ -20,10 +20,14 @@ checkpoints) live in the shared Google Drive folder.
      [fine-grained token](https://github.com/settings/personal-access-tokens/new) with
      *Contents: Read-only* access to this repo. Turn on notebook access for it.
    - `HF_TOKEN` (optional): our datasets are public, but a token gives faster downloads.
-5. In Drive, add a shortcut to the shared `cs682-final` folder in **My Drive** (*Shared with me* →
-   right-click → *Organize → Add shortcut*).
-6. **Runtime → Run all.** The notebook checks the GPU, clones the repo, installs it, mounts Drive and
-   loads the datasets.
+5. Open the shared Drive folder,
+   [`umass-fall-2026-682-final-project`](https://drive.google.com/drive/folders/1GjBXAOSqHJspuhrfvnRj1VXr4uEwXP12),
+   and add it to **My Drive**: click the folder name → *Organize → Add shortcut* → *My Drive*. Keep
+   the shortcut's name unchanged, because the notebook looks for `MyDrive/umass-fall-2026-682-final-project`.
+6. **Runtime → Run all.** The notebook checks the GPU, clones the repo, installs it, mounts Drive,
+   loads a small batch of each dataset (`LIMIT = 64`), and runs a GPU smoke test. The smoke test embeds
+   passages, builds passage graphs, trains a GAT for a few steps, and writes `smoke_test.txt` to Drive.
+   Set `LIMIT = None` to load the full datasets.
 
 The Colab VM is wiped when the session ends. Save anything worth keeping to the Drive folder.
 

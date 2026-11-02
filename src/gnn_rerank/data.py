@@ -17,6 +17,9 @@ row normalized to one shared schema::
 The official test sets are unlabeled, so ``dev`` serves as our test set and
 ``split_train_val`` carves a validation set out of ``train``.
 
+Pass ``limit=N`` to any loader to stream only the first N questions per split
+instead of downloading the full dataset (for smoke tests and debugging).
+
 None of these datasets are gated: no Hugging Face token is needed.
 """
 
@@ -24,7 +27,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from datasets import DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset
 
 HOTPOTQA_REPO = "hotpotqa/hotpot_qa"
 MUSIQUE_REPO = "bdsaglam/musique"
@@ -73,42 +76,50 @@ def _finish(raw: DatasetDict, fn: Callable[[dict], dict]) -> DatasetDict:
     )
 
 
-def load_hotpotqa() -> DatasetDict:
+def _load_raw(repo: str, splits: dict[str, str], limit: int | None, **kwargs) -> DatasetDict:
+    """Load ``{our_split: their_split}``; with ``limit``, stream just the first rows."""
+    if limit is None:
+        raw = load_dataset(repo, **kwargs)
+        return DatasetDict({ours: raw[theirs] for ours, theirs in splits.items()})
+    return DatasetDict(
+        {
+            ours: Dataset.from_list(list(load_dataset(repo, split=theirs, streaming=True, **kwargs).take(limit)))
+            for ours, theirs in splits.items()
+        }
+    )
+
+
+def load_hotpotqa(limit: int | None = None) -> DatasetDict:
     """HotpotQA, distractor setting: 2 gold + 8 distractor paragraphs per question."""
-    raw = load_dataset(HOTPOTQA_REPO, "distractor")
-    raw = DatasetDict({"train": raw["train"], "dev": raw["validation"]})
+    raw = _load_raw(HOTPOTQA_REPO, {"train": "train", "dev": "validation"}, limit, name="distractor")
     return _finish(raw, lambda ex: _normalize_wiki_style(ex, "hotpotqa"))
 
 
-def load_2wiki() -> DatasetDict:
+def load_2wiki(limit: int | None = None) -> DatasetDict:
     """2WikiMultiHopQA: 10 paragraphs per question, 2-4 of them supporting."""
-    raw = load_dataset(TWOWIKI_REPO)
-    raw = DatasetDict({"train": raw["train"], "dev": raw["validation"]})
+    raw = _load_raw(TWOWIKI_REPO, {"train": "train", "dev": "validation"}, limit)
     return _finish(raw, lambda ex: _normalize_wiki_style(ex, "2wiki"))
 
 
-def load_musique() -> DatasetDict:
+def load_musique(limit: int | None = None) -> DatasetDict:
     """MuSiQue-Ans (answerable subset): 20 paragraphs per question, 2-4 hops."""
-    raw = load_dataset(
-        MUSIQUE_REPO,
-        data_files={"train": "musique_ans_v1.0_train.jsonl", "dev": "musique_ans_v1.0_dev.jsonl"},
-    )
+    files = {"train": "musique_ans_v1.0_train.jsonl", "dev": "musique_ans_v1.0_dev.jsonl"}
+    raw = _load_raw(MUSIQUE_REPO, {"train": "train", "dev": "dev"}, limit, data_files=files)
     return _finish(raw, _normalize_musique)
 
 
-LOADERS: dict[str, Callable[[], DatasetDict]] = {
+LOADERS: dict[str, Callable[..., DatasetDict]] = {
     "hotpotqa": load_hotpotqa,
     "2wiki": load_2wiki,
     "musique": load_musique,
 }
 
 
-def load(name: str) -> DatasetDict:
+def load(name: str, limit: int | None = None) -> DatasetDict:
     """Load a dataset by name: one of ``hotpotqa``, ``2wiki``, ``musique``."""
-    try:
-        return LOADERS[name]()
-    except KeyError:
-        raise ValueError(f"unknown dataset {name!r}; expected one of {sorted(LOADERS)}") from None
+    if name not in LOADERS:
+        raise ValueError(f"unknown dataset {name!r}; expected one of {sorted(LOADERS)}")
+    return LOADERS[name](limit=limit)
 
 
 def split_train_val(ds: DatasetDict, val_fraction: float = 0.1, seed: int = 682) -> DatasetDict:
