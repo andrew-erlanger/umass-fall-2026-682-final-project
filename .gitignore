@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Environment / secrets
+.env
+.env.*
+
+# Data and caches (datasets come from the HF Hub; big artifacts live in the shared Drive)
+data/
+.cache/
+hf_cache/
+*.parquet
+*.jsonl
+*.arrow
+
+# Embeddings, indexes, checkpoints, results
+embeddings/
+checkpoints/
+outputs/
+runs/
+wandb/
+*.npy
+*.npz
+*.faiss
+*.index
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+
+# Notebooks (outputs are stripped by nbstripout; see README)
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
