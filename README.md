@@ -58,9 +58,30 @@ uv run nbstripout --install   # once per clone: strips notebook outputs on commi
 ```
 src/gnn_rerank/
   data.py          dataset loaders, all normalized to one schema (see module docstring)
+  preprocess.py    cleaning, shuffling, train/val split and Drive cache: use `prepare()`, not `data.load()`
+  embed.py         shared embedding cache on Drive (one encoder for every method)
+  rerank.py        the Reranker interface every method implements, plus random/cosine baselines
+  eval.py          the shared metrics; every reported number comes from here
 notebooks/
   starter.ipynb    Colab entry point
+  baselines.ipynb  builds the embedding cache and the baseline results table
+tests/
+  test_eval.py     metric checks (`uv run pytest`)
+  test_preprocess.py  cleaning checks
 ```
+
+## Adding a method
+
+Implement the `Reranker` interface in `rerank.py`: a `name` and a `score(rows)` that returns one score per
+passage for each row, higher meaning more relevant. Then:
+
+```python
+from gnn_rerank import eval as ev
+metrics = ev.evaluate(my_reranker, ds["dev"], scores_path=DRIVE_DIR / "results/scores/<name>_<dataset>_dev.jsonl")
+```
+
+Tune on `val`, never on `dev`. Saving the scores lets the hybrid and the error analysis reuse them.
+Report `all_gold@k` alongside recall: a multi-hop question is only answerable if *all* its gold passages make the cut.
 
 ## Data
 
@@ -74,6 +95,10 @@ The official test sets are unlabeled, so **dev is our test set**. `data.split_tr
 10% of train for validation (seed 682).
 
 ```python
-from gnn_rerank import data
-ds = data.split_train_val(data.load("musique"))   # train / val / dev
+from gnn_rerank import preprocess
+ds, report = preprocess.prepare("musique", cache_dir=DRIVE_DIR / "prepared")   # train / val / dev, cleaned
 ```
+
+`prepare` normalizes whitespace, removes empty and duplicate passages, drops questions with fewer than 2 gold
+passages, and shuffles passage order with a fixed per-question seed. Everyone should load data this way, so all methods
+see identical questions. `report.json` in the cache folder lists what was dropped and summary statistics.
