@@ -55,6 +55,8 @@ uv run nbstripout --install   # once per clone: strips notebook outputs on commi
 
 ## Layout
 
+Diagrams of the data model, modules, caches and API: [`docs/architecture.md`](docs/architecture.md).
+
 ```
 src/gnn_rerank/
   data.py          dataset loaders, all normalized to one schema (see module docstring)
@@ -65,9 +67,13 @@ src/gnn_rerank/
 notebooks/
   starter.ipynb    Colab entry point
   baselines.ipynb  builds the embedding cache and the baseline results table
-tests/
-  test_eval.py     metric checks (`uv run pytest`)
-  test_preprocess.py  cleaning checks
+docs/
+  architecture.md  diagrams: data ontology, module structure, API
+tests/             `uv run pytest`
+  test_data.py        loader normalization
+  test_preprocess.py  cleaning and prepare() cache
+  test_embed.py       embedding cache staleness
+  test_eval.py        metrics and saved scores
 ```
 
 ## Adding a method
