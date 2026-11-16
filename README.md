@@ -78,7 +78,8 @@ notebooks/
   gnn.ipynb        inspects graphs, trains GNNs, and compares saved predictions
   hybrid.ipynb     exports CE features, trains hybrids, and compares all methods
 docs/
-  architecture.md  diagrams: data ontology, module structure, API
+  architecture.md  system map, data model, API
+  diagrams/        the SVGs it shows (hand-written; edit as text)
   gnn.md           GNN layers, training, notebook stages, saved files
   hybrid.md        hybrid steps, cache checks, saved files
 tests/             `uv run pytest`

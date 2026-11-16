@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="372" viewBox="0 0 1048 372">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2328; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
+    .file { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; }
+    .note { font-size: 11px; fill: #59636e; }
+    .row { font-size: 10.5px; font-weight: 700; fill: #59636e; letter-spacing: 0.06em; }
+    .stage { font-size: 14px; font-weight: 700; }
+    .num { fill: #0969da; }
+    .chip { font-size: 11px; }
+    .cell { fill: #f6f8fa; stroke: #d1d9e0; }
+    .drive { fill: #fff8e6; stroke: #e7d39b; }
+    .head { fill: #ddf4ff; stroke: #80ccff; }
+    .solid { fill: #ffffff; stroke: #59636e; }
+    .planned { fill: #ffffff; stroke: #8c959f; stroke-dasharray: 3 3; }
+    .empty { fill: none; stroke: #d1d9e0; stroke-dasharray: 3 3; }
+    .chev { fill: none; stroke: #8c959f; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+  <rect width="1048" height="372" rx="10" fill="#ffffff"/>
+
+  <!-- row labels -->
+  <text class="row" x="92" y="126" text-anchor="end">CODE</text>
+  <text class="row" x="92" y="214" text-anchor="end">CALL</text>
+  <text class="row" x="92" y="274" text-anchor="end">PRODUCES</text>
+  <text class="row" x="92" y="334" text-anchor="end">ON DRIVE</text>
+
+  <!-- stage headers and order -->
+  <rect class="head" x="104" y="16" width="216" height="40" rx="8"/>
+  <text class="stage" x="212" y="41" text-anchor="middle"><tspan class="num">1 </tspan>Prepare</text>
+  <rect class="head" x="342" y="16" width="216" height="40" rx="8"/>
+  <text class="stage" x="450" y="41" text-anchor="middle"><tspan class="num">2 </tspan>Embed</text>
+  <rect class="head" x="580" y="16" width="216" height="40" rx="8"/>
+  <text class="stage" x="688" y="41" text-anchor="middle"><tspan class="num">3 </tspan>Score</text>
+  <rect class="head" x="818" y="16" width="216" height="40" rx="8"/>
+  <text class="stage" x="926" y="41" text-anchor="middle"><tspan class="num">4 </tspan>Evaluate</text>
+  <path class="chev" d="M327 30 L335 36 L327 42"/>
+  <path class="chev" d="M565 30 L573 36 L565 42"/>
+  <path class="chev" d="M803 30 L811 36 L803 42"/>
+
+  <!-- CODE -->
+  <rect class="cell" x="104" y="68" width="216" height="108" rx="6"/>
+  <text class="file" x="116" y="90">data.py</text>
+  <text class="note" x="116" y="106">raw loaders, 3 datasets</text>
+  <text class="file" x="116" y="134">preprocess.py</text>
+  <text class="note" x="116" y="150">clean · shuffle · split</text>
+
+  <rect class="cell" x="342" y="68" width="216" height="108" rx="6"/>
+  <text class="file" x="354" y="90">embed.py</text>
+  <text class="note" x="354" y="106">one encoder for all methods</text>
+  <text class="note" x="354" y="122">bge-base-en-v1.5, fp16</text>
+
+  <rect class="cell" x="580" y="68" width="216" height="108" rx="6"/>
+  <text class="file" x="592" y="90">rerank.py</text>
+  <text class="note" x="592" y="106">Reranker protocol</text>
+  <rect class="solid" x="592" y="116" width="62" height="20" rx="10"/>
+  <text class="chip" x="623" y="130" text-anchor="middle">Random</text>
+  <rect class="solid" x="660" y="116" width="60" height="20" rx="10"/>
+  <text class="chip" x="690" y="130" text-anchor="middle">Cosine</text>
+  <rect class="planned" x="592" y="144" width="88" height="20" rx="10"/>
+  <text class="chip" x="636" y="158" text-anchor="middle">Cross-encoder</text>
+  <rect class="planned" x="686" y="144" width="40" height="20" rx="10"/>
+  <text class="chip" x="706" y="158" text-anchor="middle">GNN</text>
+  <rect class="planned" x="732" y="144" width="52" height="20" rx="10"/>
+  <text class="chip" x="758" y="158" text-anchor="middle">Hybrid</text>
+
+  <rect class="cell" x="818" y="68" width="216" height="108" rx="6"/>
+  <text class="file" x="830" y="90">eval.py</text>
+  <text class="note" x="830" y="106">every reported metric</text>
+  <text class="note" x="830" y="122">saved scores · results table</text>
+
+  <!-- CALL -->
+  <rect class="cell" x="104" y="184" width="216" height="52" rx="6"/>
+  <text class="mono" x="116" y="206">preprocess.prepare(name)</text>
+  <text class="note" x="116" y="223">downloads only on cache miss</text>
+
+  <rect class="cell" x="342" y="184" width="216" height="52" rx="6"/>
+  <text class="mono" x="354" y="206">embed.cached(split, path)</text>
+  <text class="note" x="354" y="223">embeds only on cache miss</text>
+
+  <rect class="cell" x="580" y="184" width="216" height="52" rx="6"/>
+  <text class="mono" x="592" y="206">reranker.score(rows)</text>
+  <text class="note" x="592" y="223">called by eval.evaluate</text>
+
+  <rect class="cell" x="818" y="184" width="216" height="52" rx="6"/>
+  <text class="mono" x="830" y="206">eval.evaluate(reranker, ds)</text>
+  <text class="note" x="830" y="223">score → save → metrics</text>
+
+  <!-- PRODUCES -->
+  <rect class="cell" x="104" y="244" width="216" height="52" rx="6"/>
+  <text class="mono" x="116" y="266">DatasetDict</text>
+  <text class="note" x="116" y="283">train · val · dev</text>
+
+  <rect class="cell" x="342" y="244" width="216" height="52" rx="6"/>
+  <text class="mono" x="354" y="266">Embeddings</text>
+  <text class="note" x="354" y="283">q, P = emb.get(question_id)</text>
+
+  <rect class="cell" x="580" y="244" width="216" height="52" rx="6"/>
+  <text class="mono" x="592" y="266">list[list[float]]</text>
+  <text class="note" x="592" y="283">one score per passage</text>
+
+  <rect class="cell" x="818" y="244" width="216" height="52" rx="6"/>
+  <text class="mono" x="830" y="266">dict[str, float]</text>
+  <text class="note" x="830" y="283">each metric, mean over questions</text>
+
+  <!-- ON DRIVE -->
+  <rect class="drive" x="104" y="304" width="216" height="52" rx="6"/>
+  <text class="mono" x="116" y="326">prepared/&lt;dataset&gt;/</text>
+  <text class="note" x="116" y="343">cache · raw data from HF Hub</text>
+
+  <rect class="drive" x="342" y="304" width="216" height="52" rx="6"/>
+  <text class="mono" x="354" y="326">embeddings/&lt;model&gt;/</text>
+  <text class="mono" x="354" y="343">&lt;dataset&gt;/&lt;split&gt;.pt</text>
+
+  <rect class="empty" x="580" y="304" width="216" height="52" rx="6"/>
+  <text class="note" x="592" y="334">nothing; stage 4 saves scores</text>
+
+  <rect class="drive" x="818" y="304" width="216" height="52" rx="6"/>
+  <text class="mono" x="830" y="326">results/scores/*.jsonl</text>
+  <text class="note" x="830" y="343">read back by hybrid, analysis</text>
+</svg>
