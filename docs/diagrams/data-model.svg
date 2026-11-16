@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="330" viewBox="0 0 1048 330">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2328; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
+    .title { font-size: 13px; font-weight: 700; }
+    .note { font-size: 11px; fill: #59636e; }
+    .panel { font-size: 14px; font-weight: 700; }
+    .outer { fill: #ffffff; stroke: #d1d9e0; }
+    .question { fill: #f6f8fa; stroke: #d1d9e0; }
+    .passage { fill: #ffffff; stroke: #d1d9e0; }
+    .pill { fill: #ddf4ff; stroke: #80ccff; }
+    .pilltext { font-size: 11px; text-anchor: middle; }
+    .cell { fill: #f6f8fa; stroke: #d1d9e0; }
+    .gold { fill: #dafbe1; stroke: #4ac26b; }
+    .ctext { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; text-anchor: middle; }
+    .focus { fill: none; stroke: #0969da; stroke-width: 1.5; }
+    .jlabel { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10.5px; fill: #59636e; text-anchor: middle; }
+  </style>
+  <rect width="1048" height="330" rx="10" fill="#ffffff"/>
+
+  <!-- (a) containment -->
+  <rect class="outer" x="16" y="16" width="476" height="298" rx="10"/>
+  <text class="title" x="32" y="41">DatasetDict</text>
+  <rect class="pill" x="124" y="27" width="52" height="20" rx="10"/>
+  <text class="pilltext" x="150" y="41">train</text>
+  <rect class="pill" x="182" y="27" width="42" height="20" rx="10"/>
+  <text class="pilltext" x="203" y="41">val</text>
+  <rect class="pill" x="230" y="27" width="42" height="20" rx="10"/>
+  <text class="pilltext" x="251" y="41">dev</text>
+  <text class="note" x="284" y="41">val = 10% of train · dev = test set</text>
+
+  <rect class="question" x="32" y="60" width="444" height="238" rx="8"/>
+  <text class="title" x="48" y="84">Question</text>
+  <text class="note" x="114" y="84">one row of a split</text>
+  <text class="mono" x="48" y="106">question_id: str</text>
+  <text class="mono" x="48" y="122">question: str</text>
+  <text class="mono" x="48" y="138">answer: str</text>
+  <text class="mono" x="48" y="154">answer_aliases: list[str]</text>
+  <text class="mono" x="262" y="106">dataset: str</text>
+  <text class="mono" x="262" y="122">question_type: str</text>
+  <text class="mono" x="262" y="138">hops: int</text>
+  <text class="mono" x="262" y="154">gold_support_ids: list[str]</text>
+
+  <rect class="passage" x="56" y="168" width="404" height="114" rx="6"/>
+  <rect class="passage" x="52" y="172" width="404" height="114" rx="6"/>
+  <rect class="passage" x="48" y="176" width="404" height="114" rx="6"/>
+  <text class="title" x="64" y="199">Passage</text>
+  <text class="note" x="124" y="199">10 or 20 per question, shuffled</text>
+  <text class="mono" x="64" y="221">doc_id: str</text>
+  <text class="note" x="220" y="221">"&lt;question_id&gt;_&lt;original index&gt;"</text>
+  <text class="mono" x="64" y="237">title: str</text>
+  <text class="mono" x="64" y="253">text: str</text>
+  <text class="mono" x="64" y="269">is_supporting: bool</text>
+  <text class="note" x="220" y="269">gold passage</text>
+
+  <!-- (b) alignment -->
+  <text class="panel" x="524" y="41">Position j is the same passage everywhere</text>
+
+  <text class="jlabel" x="687" y="70">j=0</text>
+  <text class="jlabel" x="741" y="70">1</text>
+  <text class="jlabel" x="795" y="70">2</text>
+  <text class="jlabel" x="849" y="70">3</text>
+  <text class="jlabel" x="903" y="70">4</text>
+  <text class="jlabel" x="957" y="70">5</text>
+
+  <text class="mono" x="524" y="96">row["passages"]</text>
+  <text class="mono" x="524" y="140">Embeddings</text>
+  <text class="mono" x="524" y="184">saved scores</text>
+  <text class="note" x="524" y="154">embed.py cache</text>
+  <text class="note" x="524" y="198">eval.save_scores</text>
+
+  <!-- row 1 -->
+  <rect class="cell" x="662" y="78" width="50" height="28" rx="4"/><text class="ctext" x="687" y="96">q_7</text>
+  <rect class="cell" x="716" y="78" width="50" height="28" rx="4"/><text class="ctext" x="741" y="96">q_2</text>
+  <rect class="gold" x="770" y="78" width="50" height="28" rx="4"/><text class="ctext" x="795" y="96">q_0</text>
+  <rect class="cell" x="824" y="78" width="50" height="28" rx="4"/><text class="ctext" x="849" y="96">q_9</text>
+  <rect class="gold" x="878" y="78" width="50" height="28" rx="4"/><text class="ctext" x="903" y="96">q_1</text>
+  <rect class="cell" x="932" y="78" width="50" height="28" rx="4"/><text class="ctext" x="957" y="96">q_4</text>
+  <text class="note" x="992" y="96">…</text>
+  <!-- row 2 -->
+  <rect class="cell" x="662" y="122" width="50" height="28" rx="4"/><text class="ctext" x="687" y="140">q_7</text>
+  <rect class="cell" x="716" y="122" width="50" height="28" rx="4"/><text class="ctext" x="741" y="140">q_2</text>
+  <rect class="gold" x="770" y="122" width="50" height="28" rx="4"/><text class="ctext" x="795" y="140">q_0</text>
+  <rect class="cell" x="824" y="122" width="50" height="28" rx="4"/><text class="ctext" x="849" y="140">q_9</text>
+  <rect class="gold" x="878" y="122" width="50" height="28" rx="4"/><text class="ctext" x="903" y="140">q_1</text>
+  <rect class="cell" x="932" y="122" width="50" height="28" rx="4"/><text class="ctext" x="957" y="140">q_4</text>
+  <text class="note" x="992" y="140">…</text>
+  <!-- row 3 -->
+  <rect class="cell" x="662" y="166" width="50" height="28" rx="4"/><text class="ctext" x="687" y="184">q_7</text>
+  <rect class="cell" x="716" y="166" width="50" height="28" rx="4"/><text class="ctext" x="741" y="184">q_2</text>
+  <rect class="gold" x="770" y="166" width="50" height="28" rx="4"/><text class="ctext" x="795" y="184">q_0</text>
+  <rect class="cell" x="824" y="166" width="50" height="28" rx="4"/><text class="ctext" x="849" y="184">q_9</text>
+  <rect class="gold" x="878" y="166" width="50" height="28" rx="4"/><text class="ctext" x="903" y="184">q_1</text>
+  <rect class="cell" x="932" y="166" width="50" height="28" rx="4"/><text class="ctext" x="957" y="184">q_4</text>
+  <text class="note" x="992" y="184">…</text>
+
+  <rect class="focus" x="766.5" y="73" width="57" height="126" rx="7"/>
+
+  <rect class="gold" x="524" y="226" width="14" height="14" rx="3"/>
+  <text class="note" x="546" y="237">gold passage (is_supporting)</text>
+  <text class="note" x="524" y="262">prepare() shuffles once; doc_id keeps the original index.</text>
+  <text class="note" x="524" y="280">Embeddings and saved scores store doc_ids. embed.cached rebuilds,</text>
+  <text class="note" x="524" y="298">and eval.aligned raises, if the order no longer matches.</text>
+</svg>

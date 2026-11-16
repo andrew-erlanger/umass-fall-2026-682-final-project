@@ -68,7 +68,8 @@ notebooks/
   starter.ipynb    Colab entry point
   baselines.ipynb  builds the embedding cache and the baseline results table
 docs/
-  architecture.md  diagrams: data ontology, module structure, API
+  architecture.md  system map, data model, API
+  diagrams/        the SVGs it shows (hand-written; edit as text)
 tests/             `uv run pytest`
   test_data.py        loader normalization
   test_preprocess.py  cleaning and prepare() cache
