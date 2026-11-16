@@ -5,6 +5,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from datasets import Dataset, DatasetDict
+
+from gnn_rerank import preprocess
 from gnn_rerank.preprocess import clean_row
 
 
@@ -41,6 +44,20 @@ def test_shuffle_is_deterministic_and_optional():
     a, b = clean_row(row(ps)), clean_row(row(ps))
     assert a["passages"] == b["passages"] and [p["doc_id"] for p in a["passages"]] != [p["doc_id"] for p in ps]
     assert [p["doc_id"] for p in clean_row(row(ps), shuffle=False)["passages"]] == [p["doc_id"] for p in ps]
+
+
+def test_prepare_cache_respects_settings(tmp_path, monkeypatch):
+    def fake_load(name, limit=None):
+        rows = [row([P(i * 10 + j, f"T{j}", f"t{i} {j}", j < 2) for j in range(6)]) | {"question_id": f"q{i}", "question_type": "x"}
+                for i in range(20)]
+        return DatasetDict({"train": Dataset.from_list(rows[:15]), "dev": Dataset.from_list(rows[15:])})
+    loads = []
+    monkeypatch.setattr(preprocess.data, "load", lambda *a, **k: loads.append(1) or fake_load(*a, **k))
+    preprocess.prepare("fake", cache_dir=tmp_path)
+    preprocess.prepare("fake", cache_dir=tmp_path)
+    assert len(loads) == 1  # cache hit
+    _, report = preprocess.prepare("fake", cache_dir=tmp_path, shuffle=False)
+    assert len(loads) == 2 and report["shuffle"] is False  # different settings: rebuilt, not silently reused
 
 
 if __name__ == "__main__":

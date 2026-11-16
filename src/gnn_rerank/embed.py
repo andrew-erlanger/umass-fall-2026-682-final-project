@@ -36,9 +36,17 @@ class Embeddings:
     questions: torch.Tensor  # (n_questions, d)
     passages: torch.Tensor  # (n_passages_total, d)
     offsets: torch.Tensor  # (n_questions + 1,); question i owns passages[offsets[i]:offsets[i+1]]
+    doc_ids: list[str] | None = None  # (n_passages_total,), aligned with ``passages``; None in pre-doc_id caches
 
     def __post_init__(self):
         self.index = {qid: i for i, qid in enumerate(self.question_ids)}
+
+    def doc_ids_of(self, question_id: str) -> list[str] | None:
+        """The ``doc_id`` of each row of ``get(question_id)[1]``, in order."""
+        if self.doc_ids is None:
+            return None
+        i = self.index[question_id]
+        return self.doc_ids[self.offsets[i] : self.offsets[i + 1]]
 
     def get(self, question_id: str) -> tuple[torch.Tensor, torch.Tensor]:
         """``(question_embedding, passage_embeddings)`` for one question."""
@@ -58,6 +66,7 @@ class Embeddings:
                 "questions": self.questions,
                 "passages": self.passages,
                 "offsets": self.offsets,
+                "doc_ids": self.doc_ids,
             },
             tmp,
         )
@@ -91,18 +100,31 @@ def embed_split(ds, model: str = DEFAULT_MODEL, batch_size: int = 256, device: s
         questions=Q.half().cpu(),
         passages=P.half().cpu(),
         offsets=torch.cumsum(sizes, 0),
+        doc_ids=_doc_ids(passages),
     )
 
 
+def _doc_ids(passages: list[list[dict]]) -> list[str]:
+    return [p["doc_id"] for ps in passages for p in ps]
+
+
 def cached(ds, path: str | Path, model: str = DEFAULT_MODEL, **kwargs) -> Embeddings:
-    """Load ``path`` if it holds embeddings of exactly this split with this model;
-    otherwise compute them and save to ``path``."""
+    """Load ``path`` if it holds embeddings of exactly this split with this model,
+    with the same passages in the same order; otherwise compute them and save to ``path``.
+
+    Comparing passage ``doc_id``s, not just question ids, catches a re-prepared split
+    whose passages were reordered (e.g. a new shuffle), which would otherwise pair
+    each passage with another passage's embedding."""
     path = Path(path)
     if path.exists():
         emb = Embeddings.load(path)
-        if emb.model == model and emb.question_ids == list(ds["question_id"]):
+        if (
+            emb.model == model
+            and emb.question_ids == list(ds["question_id"])
+            and emb.doc_ids == _doc_ids(ds["passages"])
+        ):
             return emb
-        print(f"{path}: stale cache (different model or questions), recomputing")
+        print(f"{path}: stale cache (different model, questions or passage order), recomputing")
     emb = embed_split(ds, model=model, **kwargs)
     emb.save(path)
     return emb
