@@ -55,6 +55,8 @@ uv run nbstripout --install   # once per clone: strips notebook outputs on commi
 
 ## Layout
 
+Diagrams of the data model, modules, caches and API: [`docs/architecture.md`](docs/architecture.md).
+
 ```
 src/gnn_rerank/
   data.py          dataset loaders, all normalized to one schema (see module docstring)
@@ -75,11 +77,17 @@ notebooks/
   cross_encoder.ipynb trains a cross-encoder and compares it with saved baselines
   gnn.ipynb        inspects graphs, trains GNNs, and compares saved predictions
   hybrid.ipynb     exports CE features, trains hybrids, and compares all methods
-tests/
-  test_eval.py     metric checks (`uv run pytest`)
-  test_preprocess.py  cleaning checks
-  test_graph.py    topology, batching, label isolation, and embedding alignment
-  test_gnn.py      real GAT training, score ordering, and checkpoint checks
+docs/
+  architecture.md  diagrams: data ontology, module structure, API
+  gnn.md           GNN layers, training, notebook stages, saved files
+  hybrid.md        hybrid steps, cache checks, saved files
+tests/             `uv run pytest`
+  test_data.py        loader normalization
+  test_preprocess.py  cleaning and prepare() cache
+  test_embed.py       embedding cache staleness
+  test_eval.py        metrics and saved scores
+  test_graph.py       topology, batching, label isolation, and embedding alignment
+  test_gnn.py         real GAT training, score ordering, and checkpoint checks
 ```
 
 ## Cross-encoder experiment
