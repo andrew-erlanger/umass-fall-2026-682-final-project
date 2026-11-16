@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="430" viewBox="0 0 1048 430">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2328; }
+    .who { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; text-anchor: middle; }
+    .num { fill: #0969da; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .msg { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; text-anchor: middle; }
+    .ret { font-size: 11px; fill: #59636e; text-anchor: middle; }
+    .mask { fill: #ffffff; }
+    .tab { font-size: 11px; font-weight: 600; fill: #59636e; }
+    .head { fill: #ddf4ff; stroke: #80ccff; }
+    .plain { fill: #f6f8fa; stroke: #d1d9e0; }
+    .drive { fill: #fff8e6; stroke: #e7d39b; }
+    .life { stroke: #d1d9e0; stroke-dasharray: 4 4; }
+    .act { fill: #eaeef2; stroke: #d1d9e0; }
+    .call { stroke: #1f2328; stroke-width: 1.25; fill: none; }
+    .back { stroke: #8c959f; stroke-width: 1.25; stroke-dasharray: 5 4; fill: none; }
+    .frame { fill: none; stroke: #afb8c1; }
+    .tabbg { fill: #f6f8fa; stroke: #afb8c1; }
+  </style>
+  <defs>
+    <marker id="solid" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,1 L10,5 L0,9 z" fill="#1f2328"/>
+    </marker>
+    <marker id="open" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M1,1 L10,5 L1,9" fill="none" stroke="#8c959f" stroke-width="1.5"/>
+    </marker>
+  </defs>
+  <rect width="1048" height="430" rx="10" fill="#ffffff"/>
+
+  <!-- participants -->
+  <rect class="plain" x="31" y="16" width="130" height="40" rx="8"/>
+  <text class="who" x="96" y="41">notebook</text>
+  <rect class="head" x="225" y="16" width="150" height="40" rx="8"/>
+  <text class="who" x="300" y="41"><tspan class="num">4 </tspan>eval.evaluate</text>
+  <rect class="head" x="445" y="16" width="150" height="40" rx="8"/>
+  <text class="who" x="520" y="41"><tspan class="num">3 </tspan>reranker</text>
+  <rect class="plain" x="660" y="16" width="160" height="40" rx="8"/>
+  <text class="who" x="740" y="41">question_metrics</text>
+  <rect class="drive" x="880" y="16" width="148" height="40" rx="8"/>
+  <text class="who" x="954" y="41">results/scores/</text>
+
+  <!-- lifelines -->
+  <line class="life" x1="96" y1="56" x2="96" y2="414"/>
+  <line class="life" x1="300" y1="56" x2="300" y2="414"/>
+  <line class="life" x1="520" y1="56" x2="520" y2="414"/>
+  <line class="life" x1="740" y1="56" x2="740" y2="414"/>
+  <line class="life" x1="954" y1="56" x2="954" y2="414"/>
+  <rect class="act" x="295" y="88" width="10" height="312"/>
+
+  <!-- call -->
+  <text class="msg" x="196" y="84">evaluate(reranker, ds)</text>
+  <line class="call" x1="96" y1="92" x2="294" y2="92" marker-end="url(#solid)"/>
+
+  <!-- loop: batches -->
+  <rect class="frame" x="262" y="108" width="296" height="90" rx="6"/>
+  <path class="tabbg" d="M262 114 a6 6 0 0 1 6 -6 H430 V122 L422 130 H262 Z"/>
+  <text class="tab" x="272" y="124">for each batch of 64 rows</text>
+  <text class="msg" x="412" y="148">score(rows)</text>
+  <line class="call" x1="305" y1="156" x2="520" y2="156" marker-end="url(#solid)"/>
+  <text class="ret" x="412" y="176">list[list[float]]</text>
+  <line class="back" x1="520" y1="184" x2="306" y2="184" marker-end="url(#open)"/>
+
+  <!-- opt: save -->
+  <rect class="frame" x="262" y="214" width="730" height="62" rx="6"/>
+  <path class="tabbg" d="M262 220 a6 6 0 0 1 6 -6 H366 V228 L358 236 H262 Z"/>
+  <text class="tab" x="272" y="230">if scores_path</text>
+  <rect class="mask" x="461" y="242" width="332" height="16"/>
+  <text class="msg" x="627" y="254">save_scores: question_id, method, doc_ids, scores</text>
+  <line class="call" x1="305" y1="262" x2="954" y2="262" marker-end="url(#solid)"/>
+
+  <!-- loop: questions -->
+  <rect class="frame" x="262" y="292" width="516" height="90" rx="6"/>
+  <path class="tabbg" d="M262 298 a6 6 0 0 1 6 -6 H384 V306 L376 314 H262 Z"/>
+  <text class="tab" x="272" y="308">for each question</text>
+  <rect class="mask" x="481" y="320" width="82" height="16"/>
+  <text class="msg" x="522" y="332">row, scores</text>
+  <line class="call" x1="305" y1="340" x2="740" y2="340" marker-end="url(#solid)"/>
+  <rect class="mask" x="366" y="348" width="312" height="16"/>
+  <text class="ret" x="522" y="360">recall@k · all_gold@k · r_precision · all_gold@G · mrr · ndcg@10</text>
+  <line class="back" x1="740" y1="368" x2="306" y2="368" marker-end="url(#open)"/>
+
+  <!-- return -->
+  <text class="ret" x="196" y="392">mean of each metric, plus n</text>
+  <line class="back" x1="295" y1="400" x2="96" y2="400" marker-end="url(#open)"/>
+</svg>
