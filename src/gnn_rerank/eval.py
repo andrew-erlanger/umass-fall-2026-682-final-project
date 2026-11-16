@@ -5,6 +5,10 @@ Metrics, per question, averaged over questions (gold = the supporting passages):
 - ``recall@k``: fraction of gold passages ranked in the top k
 - ``all_gold@k``: 1 if *every* gold passage is in the top k (the multi-hop metric:
   a reader can only answer if it sees all hops)
+- ``r_precision``: recall at k = (number of gold passages for that question)
+- ``all_gold@G``: 1 if all gold passages fill the top G slots, G = that question's
+  gold count. Prefer this to ``all_gold@2`` on 2Wiki/MuSiQue, where questions with
+  3-4 gold passages can never score on ``all_gold@2``
 - ``mrr``: 1 / rank of the first gold passage
 - ``ndcg@10``: binary-relevance nDCG over the top 10
 
@@ -48,6 +52,9 @@ def question_metrics(row: dict, scores: Sequence[float], ks: Sequence[int] = DEF
         found = sum(hits[:k])
         out[f"recall@{k}"] = found / n_gold
         out[f"all_gold@{k}"] = float(found == n_gold)
+    found_g = sum(hits[:n_gold])
+    out["r_precision"] = found_g / n_gold
+    out["all_gold@G"] = float(found_g == n_gold)
     out["mrr"] = 1.0 / (hits.index(True) + 1)
     dcg = sum(1.0 / math.log2(r + 2) for r, h in enumerate(hits[:10]) if h)
     idcg = sum(1.0 / math.log2(r + 2) for r in range(min(n_gold, 10)))
@@ -130,7 +137,7 @@ def aligned(ds, saved: dict[str, list[float]]) -> list[list[float]]:
 # --- the results table ---
 
 
-def results_table(results: dict[tuple[str, str], dict], metrics: Sequence[str] = ("recall@2", "all_gold@2", "all_gold@5", "mrr", "ndcg@10")) -> str:
+def results_table(results: dict[tuple[str, str], dict], metrics: Sequence[str] = ("r_precision", "all_gold@G", "all_gold@5", "mrr", "ndcg@10")) -> str:
     """Markdown table from ``{(method, dataset): metrics}``, one row per pair."""
     lines = ["| Method | Dataset | " + " | ".join(metrics) + " |", "|" + " --- |" * (len(metrics) + 2)]
     for (method, dataset), m in results.items():

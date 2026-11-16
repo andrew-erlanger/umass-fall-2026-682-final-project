@@ -23,6 +23,15 @@ def test_perfect_ranking():
     assert m["recall@1"] == 0.5 and m["recall@2"] == 1.0
     assert m["all_gold@1"] == 0.0 and m["all_gold@2"] == 1.0
     assert m["mrr"] == 1.0 and math.isclose(m["ndcg@10"], 1.0)
+    assert m["r_precision"] == 1.0 and m["all_gold@G"] == 1.0
+
+
+def test_all_gold_at_G_adapts_to_gold_count():
+    # 3 gold passages: all_gold@2 is impossible, all_gold@G is not
+    m = ev.question_metrics(row([1, 1, 1, 0, 0]), [0.9, 0.8, 0.7, 0.1, 0.0])
+    assert m["all_gold@2"] == 0.0 and m["all_gold@G"] == 1.0 and m["r_precision"] == 1.0
+    m = ev.question_metrics(row([1, 1, 1, 0, 0]), [0.9, 0.8, 0.1, 0.7, 0.0])
+    assert m["all_gold@G"] == 0.0 and math.isclose(m["r_precision"], 2 / 3)
 
 
 def test_worst_ranking():
