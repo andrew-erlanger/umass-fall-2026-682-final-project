@@ -59,5 +59,8 @@ class CosineReranker:
             q, P = self.emb.get(row["question_id"])
             if P.shape[0] != len(row["passages"]):
                 raise ValueError(f"{row['question_id']}: {P.shape[0]} cached passages, row has {len(row['passages'])}")
+            cached_ids = self.emb.doc_ids_of(row["question_id"])
+            if cached_ids is not None and cached_ids != [p["doc_id"] for p in row["passages"]]:
+                raise ValueError(f"{row['question_id']}: cached passages are in a different order; rebuild the embedding cache")
             out.append((P.float() @ q.float()).tolist())
         return out

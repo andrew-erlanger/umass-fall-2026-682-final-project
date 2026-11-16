@@ -150,16 +150,19 @@ def prepare(
     loaded from there next time. Delete that folder to rebuild (e.g. after
     changing this module)."""
     out_dir = None
+    settings = {"version": VERSION, "dataset": name, "limit": limit, "min_gold": min_gold, "shuffle": shuffle, "seed": seed}
     if cache_dir is not None:
         out_dir = Path(cache_dir) / (name if limit is None else f"{name}_limit{limit}")
         if (out_dir / "report.json").exists():
             report = json.loads((out_dir / "report.json").read_text())
-            if report.get("version") == VERSION:
+            cached_settings = {k: report.get(k) for k in settings}
+            if cached_settings == settings:
                 return load_from_disk(str(out_dir / "data")), report
-            print(f"{out_dir}: cache is from preprocessing version {report.get('version')}, rebuilding")
+            diff = {k: (cached_settings[k], v) for k, v in settings.items() if cached_settings[k] != v}
+            print(f"{out_dir}: cache built with different settings {diff} (cached, requested), rebuilding")
 
     raw = data.load(name, limit=limit)
-    splits, report = {}, {"version": VERSION, "dataset": name, "limit": limit, "min_gold": min_gold, "shuffle": shuffle, "seed": seed}
+    splits, report = {}, dict(settings)
     for split, ds in raw.items():
         splits[split], report[split] = clean(ds, min_gold=min_gold, shuffle=shuffle, seed=seed)
     ds = data.split_train_val(DatasetDict(splits), seed=seed)
@@ -167,6 +170,7 @@ def prepare(
 
     if out_dir is not None:
         out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "report.json").unlink(missing_ok=True)  # a crash mid-rebuild must not leave a "complete" marker
         ds.save_to_disk(str(out_dir / "data"))
         (out_dir / "report.json").write_text(json.dumps(report, indent=2))  # written last: marks the cache complete
     return ds, report

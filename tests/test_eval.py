@@ -4,6 +4,8 @@ import math
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from gnn_rerank import eval as ev
@@ -72,7 +74,21 @@ def test_saved_scores_roundtrip(tmp_path=None):
     path = Path(tmp_path or tempfile.mkdtemp()) / "s.jsonl"
     ev.save_scores(path, rows, [[0.3, 0.7], [0.1, 0.2]], "x")
     saved = ev.load_scores(path)
-    assert ev.aligned({"question_id": ["b", "a"]}, saved) == [[0.1, 0.2], [0.3, 0.7]]
+    ds = {"question_id": ["b", "a"], "passages": [rows[1]["passages"], rows[0]["passages"]]}
+    assert ev.aligned(ds, saved) == [[0.1, 0.2], [0.3, 0.7]]
+
+
+def test_aligned_rejects_reordered_passages(tmp_path):
+    rows = [row([1, 0, 0], "a")]
+    ev.save_scores(tmp_path / "s.jsonl", rows, [[0.3, 0.7, 0.1]], "x")
+    reshuffled = {"question_id": ["a"], "passages": [rows[0]["passages"][::-1]]}
+    with pytest.raises(ValueError, match="different passage order"):
+        ev.aligned(reshuffled, ev.load_scores(tmp_path / "s.jsonl"))
+
+
+def test_nan_scores_raise():
+    with pytest.raises(ValueError, match="non-finite"):
+        ev.question_metrics(row([1, 0]), [float("nan"), 1.0])
 
 
 def test_length_mismatch_raises():
