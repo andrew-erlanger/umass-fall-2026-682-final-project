@@ -11,6 +11,8 @@ row normalized to one shared schema::
         "passages": [{"doc_id": str, "title": str, "text": str, "is_supporting": bool}],
         "gold_support_ids": list[str],
         "dataset": str,
+        "question_type": str,   # hotpotqa: bridge / comparison; 2wiki: its type field; musique: 2hop / 3hop / 4hop
+        "hops": int,            # reasoning hops: musique from its id, otherwise the number of gold passages
     }
 
 ``doc_id`` is ``"<question_id>_<i>"``, unique across the whole dataset.
@@ -25,6 +27,7 @@ None of these datasets are gated: no Hugging Face token is needed.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 
 from datasets import Dataset, DatasetDict, load_dataset
@@ -38,15 +41,21 @@ def _passage(qid: str, i: int, title: str, text: str, supporting: bool) -> dict:
     return {"doc_id": f"{qid}_{i}", "title": title, "text": text, "is_supporting": supporting}
 
 
-def _row(qid: str, question: str, answer: str, aliases: list[str], passages: list[dict], dataset: str) -> dict:
+def _row(
+    qid: str, question: str, answer: str, aliases: list[str], passages: list[dict], dataset: str,
+    question_type: str = "unknown", hops: int | None = None,
+) -> dict:
+    gold = [p["doc_id"] for p in passages if p["is_supporting"]]
     return {
         "question_id": qid,
         "question": question,
         "answer": answer,
         "answer_aliases": aliases,
         "passages": passages,
-        "gold_support_ids": [p["doc_id"] for p in passages if p["is_supporting"]],
+        "gold_support_ids": gold,
         "dataset": dataset,
+        "question_type": question_type or "unknown",
+        "hops": hops if hops is not None else len(gold),
     }
 
 
@@ -59,7 +68,14 @@ def _normalize_wiki_style(ex: dict, dataset: str) -> dict:
         _passage(ex["id"], i, title, " ".join(s.strip() for s in sents), title in gold_titles)
         for i, (title, sents) in enumerate(zip(ctx["title"], ctx["sentences"]))
     ]
-    return _row(ex["id"], ex["question"], ex["answer"], [], passages, dataset)
+    return _row(ex["id"], ex["question"], ex["answer"], [], passages, dataset, question_type=ex.get("type") or "unknown")
+
+
+def _musique_hops(ex: dict) -> int:
+    """MuSiQue ids start with the hop count ("2hop__…", "3hop1__…", "4hop3__…");
+    fall back to the length of the question decomposition."""
+    m = re.match(r"(\d)hop", ex["id"])
+    return int(m.group(1)) if m else len(ex.get("question_decomposition") or [])
 
 
 def _normalize_musique(ex: dict) -> dict:
@@ -67,7 +83,11 @@ def _normalize_musique(ex: dict) -> dict:
         _passage(ex["id"], i, p["title"], p["paragraph_text"], p["is_supporting"])
         for i, p in enumerate(ex["paragraphs"])
     ]
-    return _row(ex["id"], ex["question"], ex["answer"], list(ex["answer_aliases"]), passages, "musique")
+    hops = _musique_hops(ex)
+    return _row(
+        ex["id"], ex["question"], ex["answer"], list(ex["answer_aliases"]), passages, "musique",
+        question_type=f"{hops}hop", hops=hops,
+    )
 
 
 def _finish(raw: DatasetDict, fn: Callable[[dict], dict]) -> DatasetDict:

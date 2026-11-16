@@ -106,6 +106,16 @@ def evaluate(reranker, ds, ks: Sequence[int] = DEFAULT_KS, batch_size: int = 64,
     return evaluate_scores(ds, scores, ks)
 
 
+def evaluate_by(rows, scores, key: str = "question_type", ks: Sequence[int] = DEFAULT_KS) -> dict[str, dict]:
+    """Metrics per group, e.g. per question type or per hop count: ``{group: metrics}``."""
+    groups: dict[str, tuple[list, list]] = {}
+    for row, s in zip(rows, scores, strict=True):
+        g = groups.setdefault(str(row[key]), ([], []))
+        g[0].append(row)
+        g[1].append(s)
+    return {g: evaluate_scores(r, s, ks) for g, (r, s) in sorted(groups.items())}
+
+
 # --- saved scores: how tracks hand results to each other (e.g. to the hybrid) ---
 
 

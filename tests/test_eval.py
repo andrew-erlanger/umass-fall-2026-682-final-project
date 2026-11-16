@@ -34,6 +34,14 @@ def test_all_gold_at_G_adapts_to_gold_count():
     assert m["all_gold@G"] == 0.0 and math.isclose(m["r_precision"], 2 / 3)
 
 
+def test_evaluate_by_groups():
+    rows = [{**row([1, 0], "a"), "question_type": "2hop"}, {**row([0, 1], "b"), "question_type": "3hop"},
+            {**row([1, 0], "c"), "question_type": "2hop"}]
+    out = ev.evaluate_by(rows, [[1, 0], [1, 0], [0, 1]])
+    assert list(out) == ["2hop", "3hop"] and out["2hop"]["n"] == 2 and out["2hop"]["mrr"] == 0.75
+    assert out["3hop"]["mrr"] == 0.5
+
+
 def test_worst_ranking():
     m = ev.question_metrics(row([1, 0, 0, 0]), [0.0, 1.0, 0.9, 0.8])
     assert m["recall@2"] == 0.0 and m["mrr"] == 0.25

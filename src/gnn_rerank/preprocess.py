@@ -39,6 +39,10 @@ from datasets import DatasetDict, load_from_disk
 
 from . import data
 
+# Bump this whenever data.py or this module changes what a prepared row contains:
+# prepare() rebuilds any Drive cache written by a different version.
+VERSION = 2
+
 _WS = re.compile(r"\s+")
 LONG_WORDS = 300  # roughly 400+ tokens: at risk of truncation by 512-token encoders
 
@@ -109,6 +113,7 @@ def _summarize(cleaned) -> dict:
         "passages_removed": {"empty": sum(s["empty"] for s in stats), "duplicate": sum(s["duplicate"] for s in stats)},
         "passages_per_question": _hist(Counter(len(ps) for ps in kept)),
         "gold_per_question": _hist(Counter(sum(p["is_supporting"] for p in ps) for ps in kept)),
+        "question_types": _hist(Counter(t for t, d in zip(cleaned["question_type"], cleaned["_drop"]) if not d)),
         # where gold sat in the original order: if this is far from uniform, the shuffle mattered
         "gold_position_before_shuffle": _hist(gold_pos),
         "passage_words": {
@@ -148,10 +153,13 @@ def prepare(
     if cache_dir is not None:
         out_dir = Path(cache_dir) / (name if limit is None else f"{name}_limit{limit}")
         if (out_dir / "report.json").exists():
-            return load_from_disk(str(out_dir / "data")), json.loads((out_dir / "report.json").read_text())
+            report = json.loads((out_dir / "report.json").read_text())
+            if report.get("version") == VERSION:
+                return load_from_disk(str(out_dir / "data")), report
+            print(f"{out_dir}: cache is from preprocessing version {report.get('version')}, rebuilding")
 
     raw = data.load(name, limit=limit)
-    splits, report = {}, {"dataset": name, "limit": limit, "min_gold": min_gold, "shuffle": shuffle, "seed": seed}
+    splits, report = {}, {"version": VERSION, "dataset": name, "limit": limit, "min_gold": min_gold, "shuffle": shuffle, "seed": seed}
     for split, ds in raw.items():
         splits[split], report[split] = clean(ds, min_gold=min_gold, shuffle=shuffle, seed=seed)
     ds = data.split_train_val(DatasetDict(splits), seed=seed)
