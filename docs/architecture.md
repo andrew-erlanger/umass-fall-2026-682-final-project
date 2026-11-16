@@ -122,18 +122,48 @@ Bump `preprocess.VERSION` whenever a prepared row's contents change.
 
 ### Pipeline
 
+Boxes are function calls, arrows carry data, cylinders are caches (dotted: read on hit, written on miss).
+
 ```mermaid
-flowchart LR
-    hub[(HF Hub)] -->|"preprocess.prepare(name, limit, cache_dir)"| ds["DatasetDict<br/>train · val · dev"]
-    ds -->|"embed.cached(ds[split], path)"| emb[Embeddings]
-    emb -->|"CosineReranker(emb)"| rr{{"Reranker<br/>.name<br/>.score(rows) → list[list[float]]"}}
-    yours[your method] -.->|implements| rr
-    rr -->|"eval.evaluate(rr, ds[split], scores_path=…)"| metrics["metrics<br/>dict[str, float] + n"]
-    rr -->|"scores_path"| file[("scores .jsonl")]
-    file -->|"eval.load_scores → eval.aligned(ds, saved)"| scores["list[list[float]]"]
-    scores -->|"eval.evaluate_scores(rows, scores)"| metrics
-    scores -->|"eval.evaluate_by(rows, scores, key)"| groups["dict[group, metrics]"]
-    metrics -->|"eval.results_table({(method, dataset): metrics})"| table[markdown table]
+flowchart TB
+    hub[(HF Hub)]
+    hfc[("~/.cache/huggingface<br/>local; wiped with the Colab VM")]
+    d_prep[("Drive: prepared/")]
+    d_emb[("Drive: embeddings/")]
+    d_scores[("Drive: results/scores/")]
+
+    subgraph PREP ["preprocess.prepare(name, limit, cache_dir)"]
+        direction LR
+        load["data.load<br/>only on cache miss"] -->|raw train · dev| clean["clean + split_train_val"]
+    end
+    hub --> load
+    load <-.-> hfc
+    PREP <-.-> d_prep
+
+    PREP -->|"ds: train · val · dev"| cached["embed.cached(ds[split], path)"]
+    cached <-.-> d_emb
+    cached -->|Embeddings| cos["CosineReranker(emb)"]
+    yours["your Reranker"]
+
+    subgraph EV ["eval.evaluate(reranker, ds[split], scores_path)"]
+        direction LR
+        sa["score_all<br/>calls reranker.score(rows)"] -->|"scores: list[list[float]]"| es[evaluate_scores]
+        sa -->|if scores_path| ss[save_scores]
+    end
+    PREP -->|"ds[split]"| EV
+    cos -->|reranker| EV
+    yours -->|reranker| EV
+    ss --> d_scores
+
+    subgraph OFF ["later, no model needed: hybrid, error analysis, per-type breakdown"]
+        direction LR
+        ld["load_scores → aligned(ds, saved)"] -->|scores| ev2["evaluate_scores · evaluate_by"]
+    end
+    d_scores --> ld
+
+    es -->|"metrics: dict + n"| rt["results_table"]
+    ev2 -->|metrics| rt
+    rt --> table[/markdown table/]
 ```
 
 ### `eval.evaluate` and the `Reranker` contract
