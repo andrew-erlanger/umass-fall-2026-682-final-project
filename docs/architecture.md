@@ -29,27 +29,9 @@ Bump `preprocess.VERSION` whenever the contents of a prepared row change.
 
 ## API
 
-```mermaid
-sequenceDiagram
-    participant NB as notebook
-    participant EV as eval.evaluate
-    participant RR as Reranker
-    participant QM as eval.question_metrics
-    NB->>EV: evaluate(reranker, ds, scores_path)
-    loop batches of 64 rows
-        EV->>RR: score(rows)
-        RR-->>EV: one list per row, one finite float per passage, in row["passages"] order
-    end
-    opt scores_path given
-        EV->>EV: save_scores: question_id, method, doc_ids, scores
-    end
-    loop each question
-        EV->>QM: question_metrics(row, scores)
-        Note over QM: rank by score, ties by position.<br/>Raises on length mismatch, NaN/inf, or no gold
-        QM-->>EV: recall@k, all_gold@k, r_precision, all_gold@G, mrr, ndcg@10
-    end
-    EV-->>NB: mean of each metric, plus n
-```
+![eval.evaluate calls reranker.score per batch of 64 rows, optionally saves the scores to results/scores/, then calls question_metrics per question and returns the mean of each metric.](diagrams/evaluate-sequence.svg)
+
+`reranker.score(rows)` must return, for each row, one finite float per passage, in `row["passages"]` order, higher meaning more relevant. `question_metrics` raises on a wrong count or a NaN/inf score. Ties rank by position.
 
 Reusing saved scores without the model (hybrid, error analysis):
 
