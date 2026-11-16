@@ -33,6 +33,13 @@ def test_duplicate_of_gold_stays_gold():
     assert sorted(out["gold_support_ids"]) == ["q_0", "q_2"]
 
 
+def test_hops_follows_gold_count_after_merge():
+    ps = [P(0, "A", "x", True), P(1, "A", "x", True), P(2, "B", "y", True), P(3, "C", "z", False)]
+    wiki = clean_row(row(ps) | {"dataset": "2wiki", "hops": 3})
+    assert wiki["hops"] == 2  # the two copies of A merged
+    assert clean_row(row(ps) | {"dataset": "musique", "hops": 3})["hops"] == 3  # from the id, untouched
+
+
 def test_drop_reasons():
     assert clean_row(row([P(0, "A", "x", True), P(1, "B", "y", False)]))["_drop"] == "fewer_than_2_gold"
     assert clean_row(row([P(0, "A", "x", True), P(1, "B", "y", True)]))["_drop"] == "all_passages_gold"
