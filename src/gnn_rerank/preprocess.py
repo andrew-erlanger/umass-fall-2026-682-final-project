@@ -41,7 +41,7 @@ from . import data
 
 # Bump this whenever data.py or this module changes what a prepared row contains:
 # prepare() rebuilds any Drive cache written by a different version.
-VERSION = 2
+VERSION = 3
 
 _WS = re.compile(r"\s+")
 LONG_WORDS = 300  # roughly 400+ tokens: at risk of truncation by 512-token encoders
@@ -90,6 +90,8 @@ def clean_row(row: dict, min_gold: int = 2, shuffle: bool = True, seed: int = 68
         "question": _norm(row["question"]),
         "passages": passages,
         "gold_support_ids": [p["doc_id"] for p in passages if p["is_supporting"]],
+        # hops counts gold passages except on MuSiQue (from its id); merging duplicates can change that count
+        **({"hops": n_gold} if "hops" in row and row.get("dataset") != "musique" else {}),
         "_drop": drop,
         "_stats": json.dumps(stats),
     }
