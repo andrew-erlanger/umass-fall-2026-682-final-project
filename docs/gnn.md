@@ -281,9 +281,10 @@ RUN_ID = 'self-only-v1'
 ```
 
 Rerun from section 5. GAT layers retain self-loops, but passages cannot exchange
-information. Compare the saved metrics with the normal GNN. Other proposed work
-includes the cross-encoder/GNN hybrid, supporting-passage connectivity analysis,
-edge-noise experiments, and LLM answer generation with answer exact match/F1.
+information. Compare the saved metrics with the normal GNN. The
+[cross-encoder/GNN hybrid](hybrid.md) has its own notebook. Further proposal work
+includes supporting-passage connectivity analysis, edge-noise experiments, and
+LLM answer generation with answer exact match/F1.
 
 Run `uv run pytest` for development checks. Synthetic-data tests cover graph
 construction, alignment, label isolation, batching, weight updates, tiny-set

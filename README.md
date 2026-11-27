@@ -66,11 +66,15 @@ src/gnn_rerank/
   graph.py         verified passage features and bidirectional cosine-neighbor graphs
   gnn.py           GAT architecture, scoring, and checkpoint saving/loading
   train_gnn.py     training loop and validation checkpoint selection
+  hybrid_scores.py verified frozen cross-encoder predictions for hybrid features
+  hybrid.py        GNN graphs with an extra cross-encoder score per passage
+  train_hybrid.py  hybrid training using the shared GAT/epoch routine
 notebooks/
   starter.ipynb    Colab entry point
   baselines.ipynb  builds the embedding cache and the baseline results table
   cross_encoder.ipynb trains a cross-encoder and compares it with saved baselines
   gnn.ipynb        inspects graphs, trains GNNs, and compares saved predictions
+  hybrid.ipynb     exports CE features, trains hybrids, and compares all methods
 tests/
   test_eval.py     metric checks (`uv run pytest`)
   test_preprocess.py  cleaning checks
@@ -115,6 +119,20 @@ Model code lives in `gnn.py`, graph construction in `graph.py`, and training in
 `train_gnn.py`. GNN-specific verified embedding copies leave original baseline
 caches untouched. The self-only comparison is a separate optional run.
 See [docs/gnn.md](docs/gnn.md) for layers, training, notebook stages, and saved files.
+
+## Hybrid experiment
+
+Run `notebooks/hybrid.ipynb` after the matching cross-encoder run has completed.
+Set LIMIT and CROSS_ENCODER_RUN_ID to that experiment, and choose a RUN_ID for
+the new hybrid. All three datasets run separately. For a full run use
+`LIMIT = None`, `RUN_ID = "full-v1"`, and the matching CE/GNN run IDs.
+
+The hybrid appends the frozen CE's raw score to each GNN node (770 inputs with
+BGE-base). It reuses graph construction, PassageGAT, and the GNN epoch-training
+routine. Only the new GAT trains. Train/val CE predictions are generated and
+cached separately because the CE notebook originally exports only dev scores.
+Original baseline/CE/GNN implementations and outputs are unchanged.
+See [docs/hybrid.md](docs/hybrid.md) for steps, cache checks, and saved files.
 
 ## Adding a method
 
