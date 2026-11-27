@@ -62,13 +62,40 @@ src/gnn_rerank/
   embed.py         shared embedding cache on Drive (one encoder for every method)
   rerank.py        the Reranker interface every method implements, plus random/cosine baselines
   eval.py          the shared metrics; every reported number comes from here
+  cross_encoder.py text-pair scoring, fine-tuning, and checkpoint saving/loading
 notebooks/
   starter.ipynb    Colab entry point
   baselines.ipynb  builds the embedding cache and the baseline results table
+  cross_encoder.ipynb trains a cross-encoder and compares it with saved baselines
 tests/
   test_eval.py     metric checks (`uv run pytest`)
   test_preprocess.py  cleaning checks
 ```
+
+## Cross-encoder experiment
+
+Use `notebooks/cross_encoder.ipynb` in Colab with the same token and Drive setup.
+Set `BRANCH` to the pushed branch containing this notebook and `cross_encoder.py`;
+local edits are not available to Colab until committed and pushed. Run sections in
+order. Start with MuSiQue and `LIMIT = 64` to check the pipeline, then use
+`LIMIT = None` and a new `RUN_ID` for full training. No embedding cache is required.
+
+The starting checkpoint is
+[`cross-encoder/ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2).
+Training uses all question/passage pairs with supporting labels and binary
+cross-entropy. Validation `all_gold@5` selects the best epoch (`recall@5` breaks
+ties); dev is used only for the final comparison. Defaults are one epoch, pair
+batch size 16, learning rate 2e-5, and 512 tokens per question/passage pair.
+These are starting settings, not tuned experiment results.
+
+Checkpoints and training history go to
+`checkpoints/cross_encoder/<dataset>[_limitN]/<RUN_ID>/` on Drive. Load `best/`
+to score with the selected model. Completed runs with matching settings/data are
+reused; interrupted training needs a new run directory (optimizer resume is not
+implemented). Dev scores and comparison tables go to
+`results/cross_encoder/<dataset>[_limitN]/<RUN_ID>/`. Existing random/cosine score
+files are read for comparison, not overwritten; they must use the same prepared
+data and passage order. The notebook does not implement answer generation/EM/F1.
 
 ## Adding a method
 
