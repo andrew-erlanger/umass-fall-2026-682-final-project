@@ -63,13 +63,19 @@ src/gnn_rerank/
   rerank.py        the Reranker interface every method implements, plus random/cosine baselines
   eval.py          the shared metrics; every reported number comes from here
   cross_encoder.py text-pair scoring, fine-tuning, and checkpoint saving/loading
+  graph.py         verified passage features and bidirectional cosine-neighbor graphs
+  gnn.py           GAT architecture, scoring, and checkpoint saving/loading
+  train_gnn.py     training loop and validation checkpoint selection
 notebooks/
   starter.ipynb    Colab entry point
   baselines.ipynb  builds the embedding cache and the baseline results table
   cross_encoder.ipynb trains a cross-encoder and compares it with saved baselines
+  gnn.ipynb        inspects graphs, trains GNNs, and compares saved predictions
 tests/
   test_eval.py     metric checks (`uv run pytest`)
   test_preprocess.py  cleaning checks
+  test_graph.py    topology, batching, label isolation, and embedding alignment
+  test_gnn.py      real GAT training, score ordering, and checkpoint checks
 ```
 
 ## Cross-encoder experiment
@@ -77,7 +83,7 @@ tests/
 Use `notebooks/cross_encoder.ipynb` in Colab with the same token and Drive setup.
 Set `BRANCH` to the pushed branch containing this notebook and `cross_encoder.py`;
 local edits are not available to Colab until committed and pushed. Run sections in
-order. Start with MuSiQue and `LIMIT = 64` to check the pipeline, then use
+order. All three datasets run separately. Start with `LIMIT = 64` to check the pipeline, then use
 `LIMIT = None` and a new `RUN_ID` for full training. No embedding cache is required.
 
 The starting checkpoint is
@@ -96,6 +102,19 @@ implemented). Dev scores and comparison tables go to
 `results/cross_encoder/<dataset>[_limitN]/<RUN_ID>/`. Existing random/cosine score
 files are read for comparison, not overwritten; they must use the same prepared
 data and passage order. The notebook does not implement answer generation/EM/F1.
+
+## GNN experiment
+
+Run `notebooks/gnn.ipynb` in Colab with the same data/token/Drive setup as
+baselines. Set `BRANCH` to your pushed branch. The notebook follows a linear
+flow: load data, load embeddings, inspect a graph, train one GAT per dataset,
+score dev, and compare existing predictions. Start with `LIMIT = 64` and use
+`LIMIT = None` plus a new `RUN_ID` for full runs.
+
+Model code lives in `gnn.py`, graph construction in `graph.py`, and training in
+`train_gnn.py`. GNN-specific verified embedding copies leave original baseline
+caches untouched. The self-only comparison is a separate optional run.
+See [docs/gnn.md](docs/gnn.md) for layers, training, notebook stages, and saved files.
 
 ## Adding a method
 
