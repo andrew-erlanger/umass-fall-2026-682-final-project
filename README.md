@@ -82,6 +82,7 @@ docs/
   diagrams/        the SVGs it shows (hand-written; edit as text)
   gnn.md           GNN layers, training, notebook stages, saved files
   hybrid.md        hybrid steps, cache checks, saved files
+  known-issues.md  open problems in the cross-encoder, GNN and hybrid code
 tests/             `uv run pytest`
   test_data.py        loader normalization
   test_preprocess.py  cleaning and prepare() cache
