@@ -41,6 +41,8 @@ def question_metrics(row: dict, scores: Sequence[float], ks: Sequence[int] = DEF
     passages = row["passages"]
     if len(scores) != len(passages):
         raise ValueError(f"{row['question_id']}: {len(scores)} scores for {len(passages)} passages")
+    if not all(math.isfinite(s) for s in scores):
+        raise ValueError(f"{row['question_id']}: non-finite score (NaN/inf) would make the ranking arbitrary")
     gold = [p["is_supporting"] for p in passages]
     n_gold = sum(gold)
     if n_gold == 0:
@@ -120,28 +122,44 @@ def evaluate_by(rows, scores, key: str = "question_type", ks: Sequence[int] = DE
 
 
 def save_scores(path: str | Path, rows: Iterable[dict], scores: Iterable[Sequence[float]], method: str) -> None:
-    """One JSON line per question: ``{"question_id", "method", "scores"}``."""
+    """One JSON line per question: ``{"question_id", "method", "doc_ids", "scores"}``.
+
+    ``doc_ids`` records the passage order the scores refer to, so ``aligned`` can
+    refuse scores computed on a differently prepared (e.g. reshuffled) split."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     with open(tmp, "w") as f:
         for row, s in zip(rows, scores, strict=True):
-            f.write(json.dumps({"question_id": row["question_id"], "method": method, "scores": list(s)}) + "\n")
+            rec = {
+                "question_id": row["question_id"],
+                "method": method,
+                "doc_ids": [p["doc_id"] for p in row["passages"]],
+                "scores": list(s),
+            }
+            f.write(json.dumps(rec) + "\n")
     tmp.replace(path)
 
 
-def load_scores(path: str | Path) -> dict[str, list[float]]:
-    """``{question_id: scores}`` from a file written by ``save_scores``."""
+def load_scores(path: str | Path) -> dict[str, dict]:
+    """``{question_id: record}`` from a file written by ``save_scores``; pass it to ``aligned``."""
     with open(path) as f:
-        return {(r := json.loads(line))["question_id"]: r["scores"] for line in f}
+        return {(r := json.loads(line))["question_id"]: r for line in f}
 
 
-def aligned(ds, saved: dict[str, list[float]]) -> list[list[float]]:
-    """Saved scores in ``ds`` row order; raises if any question is missing."""
+def aligned(ds, saved: dict[str, dict]) -> list[list[float]]:
+    """Saved scores in ``ds`` row order. Raises if any question is missing or its
+    passages are not in the order the scores were computed on."""
     missing = [qid for qid in ds["question_id"] if qid not in saved]
     if missing:
         raise KeyError(f"{len(missing)} questions have no saved scores, e.g. {missing[:3]}")
-    return [saved[qid] for qid in ds["question_id"]]
+    out = []
+    for qid, passages in zip(ds["question_id"], ds["passages"], strict=True):
+        rec = saved[qid]
+        if rec.get("doc_ids") != [p["doc_id"] for p in passages]:
+            raise ValueError(f"{qid}: saved scores are for a different passage order (or predate doc_ids); rescore")
+        out.append(rec["scores"])
+    return out
 
 
 # --- the results table ---
