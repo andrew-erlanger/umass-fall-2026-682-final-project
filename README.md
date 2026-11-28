@@ -17,7 +17,8 @@ We evaluate ranking quality (recall@5, all_gold@5, MRR, nDCG) on **HotpotQA**, *
 Diagrams of the data model, modules and API are in [`docs/architecture.md`](docs/architecture.md).
 Open problems in the model code are in [`docs/known-issues.md`](docs/known-issues.md).
 
-**Contents:** [How the setup works](#how-the-setup-works) ·
+**Contents:** [Project management](#project-management) ·
+[How the setup works](#how-the-setup-works) ·
 [One-time setup](#one-time-setup) ·
 [Workflow 1: running experiments](#workflow-1-running-experiments-in-colab) ·
 [Workflow 2: changing the code](#workflow-2-changing-the-code) ·
@@ -28,6 +29,95 @@ Open problems in the model code are in [`docs/known-issues.md`](docs/known-issue
 [Mac or Colab?](#mac-or-colab) ·
 [Troubleshooting](#troubleshooting) ·
 [Git cheat sheet](#git-cheat-sheet)
+
+---
+
+## Project management
+
+Plan as of Saturday 28 November 2026. **Poster due Wednesday 2 December, 10am.** Owners below are
+proposed from the group chat and not yet agreed. The report deadline is not recorded anywhere.
+
+### Who does what, and when
+
+| When | Andrew | Luke | Bao | Justin |
+|---|---|---|---|---|
+| **Sat 28** afternoon | Merges, run script, start MuSiQue `I1 I2 I3 M1 M2` | RQ2 and RQ3 code on the small-run scores `Q1 Q2` | Poster layout, intro, method, data `P1` | Answer model, generation and scoring code `G1 G2` |
+| **Sat 28** evening | MuSiQue results to Drive, start the other two overnight `M3 M4 O1 O2` | RQ2 and RQ3 on MuSiQue `Q3 Q4` | Poster, continued | Qualitative cases `C1` |
+| **Sun 29** | Other datasets' tables, answer generation `O3 G3` | Rerun on the other two, final figures `Q5` | Results panels `P2` | Answer table, report draft `G4 W1` |
+| **Mon 30** | Results freeze at noon | | Add other datasets to the poster `P3` | |
+| **Tue 1** | Everyone: review, fix, export by evening `P4` | | | |
+| **Wed 2** 10am | **Poster due** | | | |
+| After | Everyone: report `W2 W3` | | | |
+
+### Schedule
+
+![Remaining work by person. Dark bars are the critical path to the poster; dotted tails show slack.](docs/plan/schedule.svg)
+
+Hours are back-to-back work and compute on one laptop, so they are a minimum. Machine times are
+extrapolated from a small MuSiQue run. `G3` is a guess: no language model has been timed.
+
+### Checklist
+
+Each line is: ID, item, what it waits on, hands-on time, plus unattended machine time where there is any.
+
+**Andrew**
+
+- [x] **I1** Merge Bao's branch into master · waits on nothing · 0.5 h
+- [ ] **I2** Merge the cache and hop-count fixes · waits on I1 · 0.5 h
+- [ ] **I3** Full-run script with resume · waits on I2 · 1 h + 0.2 h machine
+- [ ] **M1** MuSiQue: embeddings and baselines · waits on I3 · 0.2 h + 0.7 h machine
+- [ ] **M2** MuSiQue: cross-encoder, train and score · waits on M1 · 0.3 h + 1.1 h machine
+- [ ] **M3** MuSiQue: GNN, no-edge GNN, hybrid · waits on M2 · 0.2 h + 0.1 h machine
+- [ ] **M4** MuSiQue results table, scores to Drive · waits on M3 · 0.5 h
+- [ ] **O1** HotpotQA and 2Wiki: embeddings · waits on M3 · 0.2 h + 3.7 h machine
+- [ ] **O2** HotpotQA and 2Wiki: cross-encoder · waits on O1 · 0.3 h + 7.1 h machine
+- [ ] **O3** HotpotQA and 2Wiki: GNN, hybrid, tables · waits on O2 · 0.5 h + 0.3 h machine
+- [ ] **G3** Generate answers, 500 MuSiQue questions · waits on G2, M4 · 0.3 h + 1.2 h machine
+
+**Luke**
+
+- [ ] **Q1** RQ2: connectivity definition and code · waits on I1 · 1 h
+- [ ] **Q2** RQ3: edge-noise sweep code · waits on Q1 · 1 h
+- [ ] **Q3** RQ2 on MuSiQue, figure · waits on Q2, M4 · 1 h + 0.1 h machine
+- [ ] **Q4** RQ3 on MuSiQue, figure · waits on Q3 · 1 h + 0.2 h machine
+- [ ] **Q5** RQ2 and RQ3 on the other two datasets · waits on Q4, O3 · 1 h + 0.2 h machine
+
+**Bao**
+
+- [ ] **P1** Poster layout, intro, method, data panels · waits on nothing · 2 h
+- [ ] **P2** Poster results panels, MuSiQue · waits on P1, M4, Q3, Q4, C1, G4 · 2 h
+- [ ] **P3** Add HotpotQA and 2Wiki to the poster · waits on P2, O3, Q5 · 1 h
+
+**Justin**
+
+- [ ] **G1** Choose the answer model and sample size · waits on nothing · 0.5 h
+- [ ] **G2** Generation and EM/F1 code · waits on G1, I1 · 1.5 h + 0.3 h machine
+- [ ] **C1** Qualitative cases and graph pictures · waits on M4 · 1.5 h
+- [ ] **G4** Answer metrics table · waits on G3 · 0.5 h
+- [ ] **W1** Report: method, data, related work · waits on nothing · 3 h
+
+**Everyone**
+
+- [ ] **P4** Review, export, submit the poster · waits on P3 · 1 h
+- [ ] **W2** Report: results and discussion · waits on P4, W1, O3, Q5 · 3 h
+- [ ] **W3** Report: edit and submit · waits on W2 · 2 h
+
+### Decisions still open
+
+| Decision | Proposed |
+|---|---|
+| All three datasets on the poster? | Yes, if the overnight run finishes. Otherwise MuSiQue alone. |
+| Keep answer generation (EM/F1)? | Yes, on 500 MuSiQue questions |
+| Fix the GNN ties and the hybrid leak ([known issues](docs/known-issues.md)) before the poster? | After the first run, as extra rows next to the original numbers |
+| Who owns the report, and when is it due? | Justin drafts, everyone edits |
+
+### Updating this section
+
+1. Tick the item in the checklist: `- [x] **M1** ...`.
+2. Run `uv run python docs/plan/plan.py`. It redraws the chart with done items greyed out and the critical path recomputed.
+3. Commit `README.md` and `docs/plan/schedule.svg` together.
+
+Items, owners, dependencies and hours are defined in [`docs/plan/plan.py`](docs/plan/plan.py).
 
 ---
 
@@ -92,6 +182,7 @@ docs/
   gnn.md                 GNN layers, training, notebook stages, saved files
   hybrid.md              hybrid steps, cache checks, saved files
   known-issues.md        open problems in the cross-encoder, GNN and hybrid code
+  plan/                  plan.py draws schedule.svg for the Project management section above
 tests/                   `uv run pytest`
 pyproject.toml           package metadata and dependencies (managed with uv)
 uv.lock                  exact dependency versions for local installs (commit it, don't edit it)
