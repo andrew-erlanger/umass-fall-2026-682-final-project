@@ -63,7 +63,7 @@ Each line is: ID, item, what it waits on, hands-on time, plus unattended machine
 **Andrew**
 
 - [x] **I1** Merge Bao's branch into master · waits on nothing · 0.5 h
-- [ ] **I2** Merge the cache and hop-count fixes · waits on I1 · 0.5 h
+- [x] **I2** Merge the cache and hop-count fixes · waits on I1 · 0.5 h
 - [ ] **I3** Full-run script with resume · waits on I2 · 1 h + 0.2 h machine
 - [ ] **M1** MuSiQue: embeddings and baselines · waits on I3 · 0.2 h + 0.7 h machine
 - [ ] **M2** MuSiQue: cross-encoder, train and score · waits on M1 · 0.3 h + 1.1 h machine

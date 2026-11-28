@@ -37,112 +37,112 @@ text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Ar
 <line x1="980.0" x2="980.0" y1="28" y2="738" stroke="#eaeef2"/>
 <text x="980.0" y="22" text-anchor="middle" class="mono note">26 h</text>
 <rect x="0" y="36" width="1000" height="18" fill="#f6f8fa"/>
-<text x="8" y="49" class="lane">ANDREW · 4 h HANDS-ON LEFT</text>
+<text x="8" y="49" class="lane">ANDREW · 3.5 h HANDS-ON LEFT</text>
 <text x="8" y="71" class="mono faded">I1</text>
 <text x="38" y="71" class="faded">Merge Bao&#x27;s branch into master</text>
 <text x="344.0" y="71" class="note">✓ done</text>
-<text x="8" y="93" class="mono strong">I2</text>
-<text x="38" y="93" class="strong">Merge the cache and hop-count fixes</text>
-<rect x="340.0" y="83" width="12.3" height="12" rx="2" fill="#1f2328"/>
+<text x="8" y="93" class="mono faded">I2</text>
+<text x="38" y="93" class="faded">Merge the cache and hop-count fixes</text>
+<text x="344.0" y="93" class="note">✓ done</text>
 <text x="8" y="115" class="mono strong">I3</text>
 <text x="38" y="115" class="strong">Full-run script with resume</text>
-<rect x="352.3" y="105" width="29.5" height="12" rx="2" fill="#1f2328"/>
+<rect x="340.0" y="105" width="29.5" height="12" rx="2" fill="#1f2328"/>
 <text x="8" y="137" class="mono strong">M1</text>
 <text x="38" y="137" class="strong">MuSiQue: embeddings and baselines</text>
-<rect x="381.8" y="127" width="22.2" height="12" rx="2" fill="#1f2328"/>
+<rect x="369.5" y="127" width="22.2" height="12" rx="2" fill="#1f2328"/>
 <text x="8" y="159" class="mono strong">M2</text>
 <text x="38" y="159" class="strong">MuSiQue: cross-encoder, train and score</text>
-<rect x="404.0" y="149" width="34.5" height="12" rx="2" fill="#1f2328"/>
+<rect x="391.7" y="149" width="34.5" height="12" rx="2" fill="#1f2328"/>
 <text x="8" y="181" class="mono strong">M3</text>
 <text x="38" y="181" class="strong">MuSiQue: GNN, no-edge GNN, hybrid</text>
-<rect x="438.5" y="171" width="7.3" height="12" rx="2" fill="#1f2328"/>
+<rect x="426.2" y="171" width="7.3" height="12" rx="2" fill="#1f2328"/>
 <text x="8" y="203" class="mono ">M4</text>
 <text x="38" y="203" class="">MuSiQue results table, scores to Drive</text>
-<line x1="458.2" x2="667.4" y1="199" y2="199" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
-<rect x="445.8" y="193" width="12.4" height="12" rx="2" fill="#afb8c1"/>
+<line x1="445.8" x2="655.1" y1="199" y2="199" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<rect x="433.5" y="193" width="12.3" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="225" class="mono strong">O1</text>
 <text x="38" y="225" class="strong">HotpotQA and 2Wiki: embeddings</text>
-<rect x="445.8" y="215" width="96.0" height="12" rx="2" fill="#1f2328"/>
+<rect x="433.5" y="215" width="96.0" height="12" rx="2" fill="#1f2328"/>
 <text x="8" y="247" class="mono ">G3</text>
 <text x="38" y="247" class="">Generate answers, 500 MuSiQue questions</text>
-<line x1="495.1" x2="711.7" y1="243" y2="243" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
-<rect x="458.2" y="237" width="36.9" height="12" rx="2" fill="#afb8c1"/>
+<line x1="482.8" x2="699.4" y1="243" y2="243" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<rect x="445.8" y="237" width="37.0" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="269" class="mono strong">O2</text>
 <text x="38" y="269" class="strong">HotpotQA and 2Wiki: cross-encoder</text>
-<rect x="541.8" y="259" width="182.2" height="12" rx="2" fill="#1f2328"/>
+<rect x="529.5" y="259" width="182.2" height="12" rx="2" fill="#1f2328"/>
 <text x="8" y="291" class="mono strong">O3</text>
 <text x="38" y="291" class="strong">HotpotQA and 2Wiki: GNN, hybrid, tables</text>
-<rect x="724.0" y="281" width="19.7" height="12" rx="2" fill="#1f2328"/>
+<rect x="711.7" y="281" width="19.7" height="12" rx="2" fill="#1f2328"/>
 <rect x="0" y="300" width="1000" height="18" fill="#f6f8fa"/>
 <text x="8" y="313" class="lane">LUKE · 5 h HANDS-ON LEFT</text>
 <text x="8" y="335" class="mono ">Q1</text>
 <text x="38" y="335" class="">RQ2: connectivity definition and code</text>
-<line x1="364.6" x2="642.8" y1="331" y2="331" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<line x1="364.6" x2="630.5" y1="331" y2="331" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
 <rect x="340.0" y="325" width="24.6" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="357" class="mono ">Q2</text>
 <text x="38" y="357" class="">RQ3: edge-noise sweep code</text>
-<line x1="389.2" x2="667.4" y1="353" y2="353" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<line x1="389.2" x2="655.1" y1="353" y2="353" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
 <rect x="364.6" y="347" width="24.6" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="379" class="mono ">Q3</text>
 <text x="38" y="379" class="">RQ2 on MuSiQue, figure</text>
-<line x1="485.2" x2="694.5" y1="375" y2="375" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
-<rect x="458.2" y="369" width="27.0" height="12" rx="2" fill="#afb8c1"/>
+<line x1="472.9" x2="682.2" y1="375" y2="375" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<rect x="445.8" y="369" width="27.1" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="401" class="mono ">Q4</text>
 <text x="38" y="401" class="">RQ3 on MuSiQue, figure</text>
-<line x1="514.8" x2="724.0" y1="397" y2="397" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
-<rect x="485.2" y="391" width="29.6" height="12" rx="2" fill="#afb8c1"/>
+<line x1="502.5" x2="711.7" y1="397" y2="397" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<rect x="472.9" y="391" width="29.6" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="423" class="mono strong">Q5</text>
 <text x="38" y="423" class="strong">RQ2 and RQ3 on the other two datasets</text>
-<rect x="743.7" y="413" width="29.5" height="12" rx="2" fill="#1f2328"/>
+<rect x="731.4" y="413" width="29.5" height="12" rx="2" fill="#1f2328"/>
 <rect x="0" y="432" width="1000" height="18" fill="#f6f8fa"/>
 <text x="8" y="445" class="lane">BAO · 5 h HANDS-ON LEFT</text>
 <text x="8" y="467" class="mono ">P1</text>
 <text x="38" y="467" class="">Poster layout, intro, method, data panels</text>
-<line x1="389.2" x2="724.0" y1="463" y2="463" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<line x1="389.2" x2="711.7" y1="463" y2="463" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
 <rect x="340.0" y="457" width="49.2" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="489" class="mono ">P2</text>
 <text x="38" y="489" class="">Poster results panels, MuSiQue</text>
-<line x1="564.0" x2="773.2" y1="485" y2="485" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
-<rect x="514.8" y="479" width="49.2" height="12" rx="2" fill="#afb8c1"/>
+<line x1="551.7" x2="760.9" y1="485" y2="485" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<rect x="502.5" y="479" width="49.2" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="511" class="mono strong">P3</text>
 <text x="38" y="511" class="strong">Add HotpotQA and 2Wiki to the poster</text>
-<rect x="773.2" y="501" width="24.6" height="12" rx="2" fill="#1f2328"/>
+<rect x="760.9" y="501" width="24.6" height="12" rx="2" fill="#1f2328"/>
 <rect x="0" y="520" width="1000" height="18" fill="#f6f8fa"/>
 <text x="8" y="533" class="lane">JUSTIN · 7 h HANDS-ON LEFT</text>
 <text x="8" y="555" class="mono ">G1</text>
 <text x="38" y="555" class="">Choose the answer model and sample size</text>
-<line x1="352.3" x2="630.5" y1="551" y2="551" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<line x1="352.3" x2="618.2" y1="551" y2="551" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
 <rect x="340.0" y="545" width="12.3" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="577" class="mono ">W1</text>
 <text x="38" y="577" class="">Report: method, data, related work</text>
 <rect x="340.0" y="567" width="73.8" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="599" class="mono ">G2</text>
 <text x="38" y="599" class="">Generation and EM/F1 code</text>
-<line x1="396.6" x2="674.8" y1="595" y2="595" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<line x1="396.6" x2="662.5" y1="595" y2="595" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
 <rect x="352.3" y="589" width="44.3" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="621" class="mono ">C1</text>
 <text x="38" y="621" class="">Qualitative cases and graph pictures</text>
-<line x1="495.1" x2="724.0" y1="617" y2="617" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
-<rect x="458.2" y="611" width="36.9" height="12" rx="2" fill="#afb8c1"/>
+<line x1="482.8" x2="711.7" y1="617" y2="617" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<rect x="445.8" y="611" width="37.0" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="643" class="mono ">G4</text>
 <text x="38" y="643" class="">Answer metrics table</text>
-<line x1="507.4" x2="724.0" y1="639" y2="639" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
-<rect x="495.1" y="633" width="12.3" height="12" rx="2" fill="#afb8c1"/>
+<line x1="495.1" x2="711.7" y1="639" y2="639" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/>
+<rect x="482.8" y="633" width="12.3" height="12" rx="2" fill="#afb8c1"/>
 <rect x="0" y="652" width="1000" height="18" fill="#f6f8fa"/>
 <text x="8" y="665" class="lane">EVERYONE · 6 h HANDS-ON LEFT</text>
 <text x="8" y="687" class="mono strong">P4</text>
 <text x="38" y="687" class="strong">Review, export, submit the poster</text>
-<rect x="797.8" y="677" width="24.7" height="12" rx="2" fill="#1f2328"/>
+<rect x="785.5" y="677" width="24.7" height="12" rx="2" fill="#1f2328"/>
 <text x="8" y="709" class="mono ">W2</text>
 <text x="38" y="709" class="">Report: results and discussion</text>
-<rect x="822.5" y="699" width="73.8" height="12" rx="2" fill="#afb8c1"/>
+<rect x="810.2" y="699" width="73.8" height="12" rx="2" fill="#afb8c1"/>
 <text x="8" y="731" class="mono ">W3</text>
 <text x="38" y="731" class="">Report: edit and submit</text>
-<rect x="896.3" y="721" width="49.2" height="12" rx="2" fill="#afb8c1"/>
-<line x1="822.5" x2="822.5" y1="28" y2="738" stroke="#1f2328" stroke-width="1.5" stroke-dasharray="5 4"/>
+<rect x="884.0" y="721" width="49.2" height="12" rx="2" fill="#afb8c1"/>
+<line x1="810.2" x2="810.2" y1="28" y2="738" stroke="#1f2328" stroke-width="1.5" stroke-dasharray="5 4"/>
 <rect x="8" y="751" width="26" height="10" rx="2" fill="#1f2328"/><text x="40" y="760" class="note">critical</text>
 <rect x="100" y="751" width="26" height="10" rx="2" fill="#afb8c1"/><text x="132" y="760" class="note">has slack</text>
 <line x1="206" x2="232" y1="756" y2="756" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="2 3"/><text x="238" y="760" class="note">how far it can slip</text>
-<line x1="356" x2="382" y1="756" y2="756" stroke="#1f2328" stroke-width="1.5" stroke-dasharray="5 4"/><text x="388" y="760" class="note">poster ready: 19.6 h of back-to-back work and compute from now</text>
-<text x="8" y="782" class="note">Critical path: <tspan class="mono">I2 → I3 → M1 → M2 → M3 → O1 → O2 → O3 → Q5 → P3 → P4</tspan></text>
+<line x1="356" x2="382" y1="756" y2="756" stroke="#1f2328" stroke-width="1.5" stroke-dasharray="5 4"/><text x="388" y="760" class="note">poster ready: 19.1 h of back-to-back work and compute from now</text>
+<text x="8" y="782" class="note">Critical path: <tspan class="mono">I3 → M1 → M2 → M3 → O1 → O2 → O3 → Q5 → P3 → P4</tspan></text>
 </svg>
