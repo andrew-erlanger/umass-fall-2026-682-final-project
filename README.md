@@ -1,22 +1,27 @@
 # CS 682 Final Project: GNN vs. cross-encoder reranking for multi-hop RAG
 
-We compare ways of **reranking retrieved passages** for multi-hop question answering. A dense
-retriever (FAISS) fetches 20 candidate passages per question. Then each method picks the best 5:
+We compare ways of **reranking candidate passages** for multi-hop question answering. Each question
+comes with its own candidate passages (10 or 20, a few of them gold). Each method ranks them, and the
+top 5 go to the reader:
 
 | | Method | Idea |
 |---|---|---|
-| E1 | Cosine similarity | Baseline: keep FAISS's own top 5 |
+| E1 | Cosine similarity | Baseline: rank by embedding similarity to the question (BGE-base) |
 | E2 | Cross-encoder | A transformer scores each (question, passage) pair, fine-tuned on our data |
-| E3 | GNN | Treat the 20 passages as a graph (edges = similar passages) and score them with a GAT |
+| E3 | GNN | Treat the passages as a graph (edges = similar passages) and score them with a GAT |
 | E4 | Hybrid | GNN that also gets the cross-encoder's scores as node features |
 
-We evaluate retrieval quality (Recall@5, MRR, nDCG) and end-to-end answer quality (EM/F1 from a
-frozen LLM) on **HotpotQA**, **2WikiMultiHopQA** and **MuSiQue**.
+We evaluate ranking quality (recall@5, all_gold@5, MRR, nDCG) on **HotpotQA**, **2WikiMultiHopQA** and
+**MuSiQue**. End-to-end answer quality (EM/F1 from a frozen LLM) is planned and not built yet.
+
+Diagrams of the data model, modules and API are in [`docs/architecture.md`](docs/architecture.md).
+Open problems in the model code are in [`docs/known-issues.md`](docs/known-issues.md).
 
 **Contents:** [How the setup works](#how-the-setup-works) ·
 [One-time setup](#one-time-setup) ·
 [Workflow 1: running experiments](#workflow-1-running-experiments-in-colab) ·
 [Workflow 2: changing the code](#workflow-2-changing-the-code) ·
+[The experiments](#the-experiments) ·
 [Testing](#testing-your-changes) ·
 [Saving results](#saving-results-and-artifacts) ·
 [The data](#the-data) ·
@@ -64,8 +69,30 @@ Two rules follow from this:
 ```
 src/gnn_rerank/          the Python package: all reusable code goes here
   data.py                dataset loaders (all three datasets → one common format)
+  preprocess.py          cleaning, shuffling, train/val split and Drive cache: use `prepare()`, not `data.load()`
+  embed.py               shared embedding cache on Drive (one encoder for every method)
+  rerank.py              the Reranker interface every method implements, plus random/cosine baselines
+  eval.py                the shared metrics; every reported number comes from here
+  cross_encoder.py       text-pair scoring, fine-tuning, and checkpoint saving/loading
+  graph.py               verified passage features and bidirectional cosine-neighbor graphs
+  gnn.py                 GAT architecture, scoring, and checkpoint saving/loading
+  train_gnn.py           training loop and validation checkpoint selection
+  hybrid_scores.py       verified frozen cross-encoder predictions for hybrid features
+  hybrid.py              GNN graphs with an extra cross-encoder score per passage
+  train_hybrid.py        hybrid training using the shared GAT/epoch routine
 notebooks/
   starter.ipynb          Colab entry point: sets up the VM, then you add experiment cells
+  baselines.ipynb        builds the embedding cache and the baseline results table
+  cross_encoder.ipynb    trains a cross-encoder and compares it with saved baselines
+  gnn.ipynb              inspects graphs, trains GNNs, and compares saved predictions
+  hybrid.ipynb           exports CE features, trains hybrids, and compares all methods
+docs/
+  architecture.md        system map, data model, API
+  diagrams/              the SVGs it shows (hand-written; edit as text)
+  gnn.md                 GNN layers, training, notebook stages, saved files
+  hybrid.md              hybrid steps, cache checks, saved files
+  known-issues.md        open problems in the cross-encoder, GNN and hybrid code
+tests/                   `uv run pytest`
 pyproject.toml           package metadata and dependencies (managed with uv)
 uv.lock                  exact dependency versions for local installs (commit it, don't edit it)
 .gitignore               keeps data, checkpoints and caches out of git
@@ -252,17 +279,91 @@ and replacing it breaks the GPU setup.
 
 ---
 
+## The experiments
+
+Every method implements one interface and is scored by the same evaluation code, so results are
+comparable. Each learned method has its own notebook.
+
+### Adding a method
+
+Implement the `Reranker` interface in `rerank.py`: a `name` and a `score(rows)` that returns one score per
+passage for each row, higher meaning more relevant. Then:
+
+```python
+from gnn_rerank import eval as ev
+metrics = ev.evaluate(my_reranker, ds["dev"], scores_path=DRIVE_DIR / "results/scores/<name>_<dataset>_dev.jsonl")
+```
+
+Tune on `val`, never on `dev`. Saving the scores lets the hybrid and the error analysis reuse them.
+Report `all_gold@k` alongside recall: a multi-hop question is only answerable if *all* its gold passages make the cut.
+
+### Cross-encoder
+
+Use `notebooks/cross_encoder.ipynb` in Colab with the same token and Drive setup.
+Set `BRANCH` to the pushed branch containing this notebook and `cross_encoder.py`;
+local edits are not available to Colab until committed and pushed. Run sections in
+order. All three datasets run separately. Start with `LIMIT = 64` to check the pipeline, then use
+`LIMIT = None` and a new `RUN_ID` for full training. No embedding cache is required.
+
+The starting checkpoint is
+[`cross-encoder/ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2).
+Training uses all question/passage pairs with supporting labels and binary
+cross-entropy. Validation `all_gold@5` selects the best epoch (`recall@5` breaks
+ties); dev is used only for the final comparison. Defaults are one epoch, pair
+batch size 16, learning rate 2e-5, and 512 tokens per question/passage pair.
+These are starting settings, not tuned experiment results.
+
+Checkpoints and training history go to
+`checkpoints/cross_encoder/<dataset>[_limitN]/<RUN_ID>/` on Drive. Load `best/`
+to score with the selected model. Completed runs with matching settings/data are
+reused; interrupted training needs a new run directory (optimizer resume is not
+implemented). Dev scores and comparison tables go to
+`results/cross_encoder/<dataset>[_limitN]/<RUN_ID>/`. Existing random/cosine score
+files are read for comparison, not overwritten; they must use the same prepared
+data and passage order. The notebook does not implement answer generation/EM/F1.
+
+### GNN
+
+Run `notebooks/gnn.ipynb` in Colab with the same data/token/Drive setup as
+baselines. Set `BRANCH` to your pushed branch. The notebook follows a linear
+flow: load data, load embeddings, inspect a graph, train one GAT per dataset,
+score dev, and compare existing predictions. Start with `LIMIT = 64` and use
+`LIMIT = None` plus a new `RUN_ID` for full runs.
+
+Model code lives in `gnn.py`, graph construction in `graph.py`, and training in
+`train_gnn.py`. GNN-specific verified embedding copies leave original baseline
+caches untouched. The self-only comparison is a separate optional run.
+See [docs/gnn.md](docs/gnn.md) for layers, training, notebook stages, and saved files.
+
+### Hybrid
+
+Run `notebooks/hybrid.ipynb` after the matching cross-encoder run has completed.
+Set LIMIT and CROSS_ENCODER_RUN_ID to that experiment, and choose a RUN_ID for
+the new hybrid. All three datasets run separately. For a full run use
+`LIMIT = None`, `RUN_ID = "full-v1"`, and the matching CE/GNN run IDs.
+
+The hybrid appends the frozen CE's raw score to each GNN node (770 inputs with
+BGE-base). It reuses graph construction, PassageGAT, and the GNN epoch-training
+routine. Only the new GAT trains. Train/val CE predictions are generated and
+cached separately because the CE notebook originally exports only dev scores.
+Original baseline/CE/GNN implementations and outputs are unchanged.
+See [docs/hybrid.md](docs/hybrid.md) for steps, cache checks, and saved files.
+
+---
+
 ## Testing your changes
 
 Three levels, from fastest to slowest:
 
-**1. Locally on a small sample: seconds, no GPU needed.** Every loader takes `limit=N` and streams
+**0. Unit tests: about 20 seconds.** `uv run pytest`.
+
+**1. Locally on a small sample: seconds, no GPU needed.** `prepare` takes `limit=N` and streams
 just the first N questions instead of downloading the full dataset:
 
 ```python
 # scratch.py, or a cell in a local notebook using the .venv kernel
-from gnn_rerank import data
-ds = data.split_train_val(data.load("hotpotqa", limit=50))
+from gnn_rerank import preprocess
+ds, report = preprocess.prepare("hotpotqa", limit=50)
 # ...call your new code on ds["train"] / ds["dev"]...
 ```
 
@@ -298,16 +399,17 @@ Anything worth keeping goes in the shared Drive folder. The notebook defines the
 | Variable | Path | Put here |
 |---|---|---|
 | `DRIVE_DIR` | `MyDrive/umass-fall-2026-682-final-project/` | Root of the shared folder |
-| `EMB_DIR` | `…/embeddings/` | Passage/question embeddings, FAISS indexes |
+| `EMB_DIR` | `…/embeddings/` | Passage/question embeddings |
 | `CKPT_DIR` | `…/checkpoints/` | Trained model weights |
 
 Conventions, so we can find each other's work:
 
-- **Name files by dataset, model and split:** `embeddings/musique/all-MiniLM-L6-v2_dev.npy`,
-  `checkpoints/cross-encoder/hotpotqa_minilm_epoch2/`.
-- **Save results as files, not just notebook output:** write metric tables to
-  `results/<method>_<dataset>.csv` (create the folder when you need it). Notebook output is
-  stripped on commit and lost with the VM.
+- **Follow the paths the code already uses:** `prepared/<dataset>/` for cleaned data,
+  `embeddings/<encoder>/<dataset>/<split>.pt`, `checkpoints/<method>/<dataset>/<RUN_ID>/` and
+  `results/<method>/<dataset>/<RUN_ID>/`. A `_limitN` suffix marks a small test run.
+- **Save results as files, not just notebook output:** `ev.evaluate(..., scores_path=...)` saves the
+  per-passage scores, and the notebooks write `comparison.md` and `metrics.json` next to them.
+  Notebook output is stripped on commit and lost with the VM.
 - **Don't overwrite someone else's files.** Add your name or a date if in doubt.
 - **Expensive steps should check Drive first**, e.g. "if the embeddings file exists, load it,
   otherwise compute and save it". Then a new session doesn't redo 15 minutes of work.
@@ -321,8 +423,8 @@ All three datasets come from the Hugging Face Hub, are public (no token needed) 
 is reading:
 
 ```python
-from gnn_rerank import data
-ds = data.split_train_val(data.load("musique"))      # or "hotpotqa", "2wiki"
+from gnn_rerank import preprocess
+ds, report = preprocess.prepare("musique", cache_dir=DRIVE_DIR / "prepared")   # or "hotpotqa", "2wiki"
 ds["train"], ds["val"], ds["dev"]                     # dev = our test set
 row = ds["dev"][0]
 ```
@@ -342,6 +444,8 @@ row = ds["dev"][0]
     ],
     "gold_support_ids": ["2hop__460946_294723_5", "2hop__460946_294723_10"],
     "dataset": "musique",
+    "question_type": "2hop",                 # hotpotqa: bridge / comparison; 2wiki: its type field
+    "hops": 2,                               # reasoning hops
 }
 ```
 
@@ -351,6 +455,10 @@ row = ds["dev"][0]
 | 2WikiMultiHopQA | `framolfese/2WikiMultihopQA` | 167,454 / 12,576 | 10 | 2 or 4 |
 | MuSiQue-Ans | `bdsaglam/musique` | 19,938 / 2,417 | 20 | 2–4 |
 
+- `prepare` normalizes whitespace, removes empty and duplicate passages, drops questions with fewer
+  than 2 gold passages, and shuffles passage order with a fixed per-question seed. Everyone should load
+  data this way, so all methods see identical questions. `report.json` in the cache folder lists what
+  was dropped.
 - The official **test** sets have no labels, so **dev is our test set**. Never train or tune on it.
 - `split_train_val()` holds out 10% of train as **val** for tuning (fixed seed 682, so everyone gets
   the same split).
@@ -360,19 +468,22 @@ row = ds["dev"][0]
 
 ## Mac or Colab?
 
-Measured on an M4 Pro MacBook. The A100 figures are estimates.
+Measured on an M4 Pro MacBook. The A100 figures are estimates. The two rows marked * were updated on
+28 Nov 2026 from a full pipeline run on a 1,350-question MuSiQue sample, extrapolated to all three
+datasets.
 
 | Task | MacBook (Apple GPU) | A100 |
 |---|---|---|
-| Embed all ~1M passages (MiniLM) | ~15 min | ~1–2 min |
+| Embed every passage with BGE-base * | ~4.3 h (MuSiQue alone ~0.6 h) | not measured |
 | FAISS search | seconds | seconds |
 | GNN training (one epoch) | under a minute (CPU is fine) | same |
-| Small cross-encoder (MiniLM), one training epoch | ~9–28 h | ~20–30 min |
+| Small cross-encoder (MiniLM-L6), one training epoch * | ~6.3 h (MuSiQue alone ~0.8 h) | ~20–30 min |
 | Large cross-encoder (BGE-reranker-v2-m3), one training epoch | ~10 days ❌ | ~3–4 h |
 | 8B LLM answers on all dev sets | ~2–3 days ❌ | ~1 h |
 
-In short: **develop and debug anywhere on small samples. Run big cross-encoder training and LLM
-evaluation on the A100.** GNN work and embeddings are fine on a laptop.
+In short: **develop and debug anywhere on small samples. Run the large cross-encoder and LLM
+evaluation on the A100.** GNN work, embeddings and the small cross-encoder are fine on a laptop:
+the whole pipeline takes about 2 hours for MuSiQue and about 12 for all three datasets.
 
 ---
 
@@ -390,6 +501,7 @@ evaluation on the A100.** GNN work and embeddings are fine on a laptop.
 | Install cell: red pip line about `cudf` and `pyarrow` | Harmless: we don't use cudf |
 | My code change isn't showing up in Colab | Did you push? Is `BRANCH` right? Rerun the clone cell, then the cells that use the code. Still stale: *Runtime → Restart session*, run all |
 | `ModuleNotFoundError` for a newly added dependency | Rerun the install cell; if it persists, *Runtime → Restart session* |
+| Local run: `Column 'question_type' doesn't exist` | A stale Hugging Face cache from older loader code. Call `datasets.disable_caching()` first, or clear `~/.cache/huggingface/datasets` |
 | `git push` rejected (*"fetch first"*) | Someone pushed to your branch, or you're on `master`. `git pull` then push again; never force-push `master` |
 
 ---
