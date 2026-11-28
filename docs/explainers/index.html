@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Hop Reranking Explainers</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root { color-scheme: light; }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+/* Layout concept: a lab notebook. Each exhibit pairs a narrow margin note (the telling)
+   with a wide working figure (the showing). Colour is reserved for data: amber marks a
+   gold passage, four fixed hues mark the four rerankers, magenta marks graph noise. */
+:root {
+  --bg: #f3f5f8; --surface: #ffffff; --ink: #14202e; --ink2: #4a5868; --ink3: #6f7c8b;
+  --line: #d5dce5; --line2: #e8ecf1;
+  --gold: #eda100; --gold-ink: #2f2000; --gold-soft: #fdf0cc;
+  --m-cos: #2a78d6; --m-ce: #eb6834; --m-gnn: #1baf7a; --m-hyb: #6250d6;
+  --noise: #d1366f;
+  --sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f151c; --surface: #172029; --ink: #e8edf2; --ink2: #b4c0cc; --ink3: #8a98a7;
+    --line: #2d3946; --line2: #212b36;
+    --gold: #dba015; --gold-ink: #1c1300; --gold-soft: #3b2f0f;
+    --m-cos: #3987e5; --m-ce: #d95926; --m-gnn: #199e70; --m-hyb: #9085e9;
+    --noise: #e56a9c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f151c; --surface: #172029; --ink: #e8edf2; --ink2: #b4c0cc; --ink3: #8a98a7;
+  --line: #2d3946; --line2: #212b36;
+  --gold: #dba015; --gold-ink: #1c1300; --gold-soft: #3b2f0f;
+  --m-cos: #3987e5; --m-ce: #d95926; --m-gnn: #199e70; --m-hyb: #9085e9;
+  --noise: #e56a9c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+a { color: inherit; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.15; margin: 0; letter-spacing: -0.015em; }
+h1 { font-size: clamp(1.7rem, 4vw, 2.5rem); font-weight: 700; }
+h2 { font-size: clamp(1.35rem, 3vw, 1.75rem); font-weight: 600; }
+h3 { font-size: 1.05rem; font-weight: 600; letter-spacing: 0; }
+p { margin: 0; }
+.mono, code { font-family: var(--mono); font-size: 0.86em; }
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink3); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* top bar */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--bg); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.5rem; padding-block: 0.6rem; }
+.brand { font-weight: 600; font-size: 0.95rem; }
+.brand span { color: var(--ink3); font-weight: 400; }
+nav { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-left: auto; }
+nav a { text-decoration: none; font-size: 0.88rem; padding: 0.3rem 0.7rem; border-radius: 4px; color: var(--ink2); border: 1px solid transparent; }
+nav a:hover { border-color: var(--line); }
+nav a[aria-current="page"] { background: var(--ink); color: var(--bg); }
+
+/* the worked example bar */
+.example { border-bottom: 1px solid var(--line); background: var(--surface); }
+.example .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem 1.5rem; padding-block: 0.9rem; align-items: start; }
+.example .q { font-size: 1.08rem; font-weight: 500; }
+.example .meta { color: var(--ink2); font-size: 0.88rem; margin-top: 0.15rem; }
+.example label { display: grid; gap: 0.2rem; }
+select { font: inherit; font-size: 0.88rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0.35rem 0.5rem; max-width: 100%; }
+
+/* views and exhibits */
+main { padding-block: 2.2rem 4rem; }
+.view { display: flex; flex-direction: column; gap: 3.2rem; }
+.lede { display: flex; flex-direction: column; gap: 0.7rem; max-width: 46rem; }
+.lede p { font-size: 1.08rem; color: var(--ink2); }
+.exhibit { display: grid; grid-template-columns: minmax(0, 18.5rem) minmax(0, 1fr); gap: 1rem 2.2rem; align-items: start; }
+.note { display: flex; flex-direction: column; gap: 0.7rem; font-size: 0.96rem; color: var(--ink2); }
+.note h3 { color: var(--ink); }
+.note strong { color: var(--ink); font-weight: 600; }
+.fig { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1rem; display: flex; flex-direction: column; gap: 0.9rem; margin: 0; }
+.fig figcaption, .cap { font-size: 0.84rem; color: var(--ink3); }
+.plain { min-width: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+.scroll-x { overflow-x: auto; }
+.scroll-x > svg { min-width: 620px; }
+svg { display: block; max-width: 100%; height: auto; }
+.caveat { font-size: 0.86rem; color: var(--ink2); border: 1px dashed var(--ink3); border-radius: 6px; padding: 0.6rem 0.8rem; max-width: 46rem; }
+.caveat strong { color: var(--ink); }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 0.6rem 1.4rem; align-items: center; font-size: 0.88rem; color: var(--ink2); }
+.controls label { display: flex; align-items: center; gap: 0.5rem; }
+.controls output { font-family: var(--mono); color: var(--ink); min-width: 2.6ch; display: inline-block; }
+input[type="range"] { accent-color: var(--ink); width: 9.5rem; max-width: 100%; }
+input[type="checkbox"] { accent-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button, .btn { font: inherit; font-size: 0.85rem; color: var(--ink2); background: var(--surface); border: 0; padding: 0.32rem 0.7rem; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.btn { border: 1px solid var(--line); border-radius: 4px; }
+.btn:hover, .seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"]:hover { color: var(--bg); }
+
+/* passage chips and ranked lists */
+.chip { display: inline-grid; place-items: center; width: 1.55rem; height: 1.55rem; border-radius: 50%; font-family: var(--mono); font-size: 0.78rem; font-weight: 600; border: 1.5px solid var(--ink3); color: var(--ink2); background: var(--surface); flex: none; }
+.chip.gold { background: var(--gold); border-color: var(--gold); color: var(--gold-ink); }
+.ranklist { display: flex; flex-direction: column; }
+.row { display: grid; grid-template-columns: 1.7rem 1.55rem minmax(0, 1fr) minmax(4.5rem, 30%); gap: 0.6rem; align-items: center; padding: 0.22rem 0.3rem; border-radius: 4px; font-size: 0.88rem; cursor: pointer; border: 0; background: none; color: inherit; font-family: inherit; text-align: left; width: 100%; }
+.row:hover, .row.sel { background: var(--line2); }
+.row .rk { font-family: var(--mono); font-size: 0.78rem; color: var(--ink3); text-align: right; font-variant-numeric: tabular-nums; }
+.row .ttl { min-width: 0; overflow-wrap: anywhere; }
+.row .bar { display: flex; align-items: center; gap: 0.4rem; font-family: var(--mono); font-size: 0.74rem; color: var(--ink3); font-variant-numeric: tabular-nums; }
+.row .bar i { display: block; height: 0.5rem; border-radius: 0 3px 3px 0; background: var(--ink3); min-width: 2px; }
+.row.gold .bar i { background: var(--gold); }
+.row.out { opacity: 0.55; }
+.row.out.gold { opacity: 1; }
+.cut { display: flex; align-items: center; gap: 0.6rem; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); margin: 0.2rem 0; }
+.cut::before, .cut::after { content: ""; flex: 1; border-top: 2px solid var(--ink); }
+.readout { display: flex; flex-wrap: wrap; gap: 0.5rem 1.6rem; font-size: 0.9rem; }
+.readout b { font-family: var(--mono); font-weight: 600; }
+.verdict { font-family: var(--mono); font-size: 0.8rem; font-weight: 600; padding: 0.05rem 0.45rem; border-radius: 3px; border: 1.5px solid var(--ink); white-space: nowrap; }
+.verdict.yes { background: var(--ink); color: var(--bg); }
+.reader { border-top: 1px solid var(--line2); padding-top: 0.8rem; font-size: 0.9rem; color: var(--ink2); display: flex; flex-direction: column; gap: 0.3rem; min-height: 5.5rem; }
+.reader h4 { margin: 0; font-size: 0.92rem; color: var(--ink); display: flex; gap: 0.5rem; align-items: center; }
+.split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1rem 1.4rem; align-items: start; }
+.mini { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; min-width: 0; }
+.mini h4 { margin: 0 0 0.15rem; font-size: 0.82rem; font-weight: 600; display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; justify-content: space-between; }
+.mini .it { display: flex; gap: 0.45rem; align-items: center; min-width: 0; }
+.mini .it span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.dot { width: 0.7rem; height: 0.7rem; border-radius: 2px; display: inline-block; flex: none; }
+.minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem 1.4rem; }
+
+/* the reasoning chain */
+.chain { display: flex; flex-direction: column; gap: 0; }
+.hop { display: grid; grid-template-columns: 1.55rem minmax(0, 1fr); gap: 0.2rem 0.8rem; padding: 0.55rem 0; }
+.hop + .hop { border-top: 1px dashed var(--line); }
+.hop .sq { font-weight: 500; overflow-wrap: anywhere; }
+.hop .an { color: var(--ink2); font-size: 0.9rem; overflow-wrap: anywhere; }
+.hop .an b { color: var(--ink); }
+.hop .where { grid-column: 2; font-size: 0.84rem; color: var(--ink3); }
+.hop .where b { font-family: var(--mono); color: var(--ink); }
+
+/* tables */
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; padding: 0.45rem 0.9rem 0.45rem 0; border-bottom: 1px solid var(--line2); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink3); font-weight: 500; white-space: nowrap; border-bottom-color: var(--line); }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .cellbar { display: inline-block; height: 0.55rem; border-radius: 0 3px 3px 0; vertical-align: middle; margin-right: 0.5rem; }
+.pill { display: inline-block; font-family: var(--mono); font-size: 0.72rem; padding: 0.05rem 0.45rem; border-radius: 3px; border: 1px solid var(--ink3); color: var(--ink2); white-space: nowrap; }
+.pill.done { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.pill.none { border-style: dashed; }
+.rqs { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.rq { border-top: 2px solid var(--ink); padding-top: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.94rem; color: var(--ink2); }
+.rq a { font-size: 0.86rem; color: var(--ink); }
+.mechs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4rem 1.2rem; }
+.mech { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; font-size: 0.88rem; color: var(--ink2); }
+.mech h4 { margin: 0; font-size: 0.95rem; color: var(--ink); display: flex; align-items: center; gap: 0.45rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; font-size: 0.82rem; color: var(--ink2); }
+.legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.legend .ln { width: 1.3rem; border-top: 2px solid var(--ink3); display: inline-block; }
+
+/* svg classes (theme through tokens) */
+.s-ink { stroke: var(--ink); } .s-ink3 { stroke: var(--ink3); } .s-line { stroke: var(--line); }
+.f-ink { fill: var(--ink); } .f-ink2 { fill: var(--ink2); } .f-ink3 { fill: var(--ink3); } .f-surface { fill: var(--surface); } .f-bg { fill: var(--bg); } .f-gold { fill: var(--gold); } .f-goldink { fill: var(--gold-ink); } .f-none { fill: none; }
+svg text { font-family: var(--sans); font-size: 12px; fill: var(--ink2); }
+svg text.t-mono { font-family: var(--mono); font-size: 11px; }
+svg text.t-strong { fill: var(--ink); font-weight: 600; }
+svg text.t-small { font-size: 10.5px; fill: var(--ink3); }
+.node { cursor: pointer; }
+.node circle { fill: var(--surface); stroke: var(--ink3); stroke-width: 1.5; }
+.node.gold circle { fill: var(--gold); stroke: var(--gold); }
+.node text { font-family: var(--mono); font-size: 11.5px; font-weight: 600; fill: var(--ink2); text-anchor: middle; pointer-events: none; }
+.node.gold text { fill: var(--gold-ink); }
+.node .ring { fill: none; stroke: var(--ink); stroke-width: 2.5; }
+.node.dim { opacity: 0.35; }
+.edge { stroke: var(--ink3); stroke-width: 1.2; opacity: 0.55; fill: none; }
+.edge.gg { stroke: var(--gold); stroke-width: 3; opacity: 1; }
+.edge.hot { stroke: var(--ink); opacity: 1; }
+.edge.dim { opacity: 0.12; }
+.edge.del { stroke: var(--noise); stroke-dasharray: 3 4; opacity: 0.8; }
+.edge.add { stroke: var(--noise); stroke-width: 2; opacity: 1; }
+.grid { stroke: var(--line2); }
+.bl { fill: none; stroke: var(--ink3); stroke-width: 1; opacity: 0.45; }
+.bl.gold { stroke: var(--gold); stroke-width: 2.5; opacity: 1; }
+.bc circle { fill: var(--surface); stroke: var(--ink3); stroke-width: 1.2; }
+.bc.gold circle { fill: var(--gold); stroke: var(--gold); }
+.bc text { font-family: var(--mono); font-size: 9.5px; font-weight: 600; text-anchor: middle; fill: var(--ink2); pointer-events: none; }
+.bc.gold text { fill: var(--gold-ink); }
+.bump.focus [data-p]:not(.on) { opacity: 0.1; }
+.bump.focus .bl.on { stroke: var(--ink); stroke-width: 2.5; opacity: 1; }
+.bump.focus .bl.gold.on { stroke: var(--gold); }
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 0.8rem; padding: 0.35rem 0.55rem; border-radius: 4px; max-width: 17rem; line-height: 1.35; }
+#tip b { font-weight: 600; }
+
+@media (max-width: 860px) {
+  .exhibit { grid-template-columns: minmax(0, 1fr); }
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .mechs { grid-template-columns: minmax(0, 1fr); }
+  .example .wrap { grid-template-columns: minmax(0, 1fr); }
+  nav { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) { .row, nav a { transition: background-color 0.12s; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Multi-hop reranking <span>· CS 682 project explainers</span></div>
+    <nav aria-label="Explainers">
+      <a href="#problem">The problem</a>
+      <a href="#rerankers">Four rerankers</a>
+      <a href="#graph">Graph and GNN</a>
+      <a href="#experiments">Experiments</a>
+    </nav>
+  </div>
+</header>
+
+<div class="example">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Worked example · a real MuSiQue dev question</div>
+      <div class="q" id="ex-q"></div>
+      <div class="meta" id="ex-meta"></div>
+    </div>
+    <label><span class="eyebrow">Switch question</span>
+      <select id="ex-select"></select>
+    </label>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0L10 5L0 10z" class="f-ink"/></marker></defs></svg>
+<main class="wrap">
+
+<!-- ============================ THE PROBLEM ============================ -->
+<section class="view" id="v-problem">
+  <div class="lede">
+    <h1>Answering some questions takes two passages. Rerankers score them one at a time.</h1>
+    <p>We compare four ways to rank the candidate passages for a multi-hop question, and test when a graph over the passages helps find <em>all</em> the evidence.</p>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>One question, its candidates, one ranking</h3>
+      <p>Each question arrives with a fixed set of candidate passages. A few are <strong>gold</strong>: together they contain the answer. The rest are distractors.</p>
+      <p>This is the cosine baseline's ranking. Move the cutoff to change how many passages the language model gets to read.</p>
+      <p><strong>recall@k</strong> gives partial credit. <strong>all_gold@k</strong> is 1 only if every gold passage makes the cut. That is our headline metric, because a reader missing one hop cannot answer.</p>
+    </div>
+    <figure class="fig">
+      <div class="controls">
+        <label for="k-slider">Cutoff k <input type="range" id="k-slider" min="1" max="10" value="5"> <output id="k-out">5</output></label>
+        <label for="gold-toggle"><input type="checkbox" id="gold-toggle" checked> Show which passages are gold</label>
+      </div>
+      <div class="readout" id="rank-readout"></div>
+      <div class="ranklist" id="rank-list"></div>
+      <div class="reader" id="reader"></div>
+      <figcaption>Scores are cosine similarity between BGE-base embeddings of the question and each passage. Select a row to read the passage.</figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>Why a gold passage can rank low</h3>
+      <p>MuSiQue records how each question decomposes into single-hop steps. Each step is answered by one gold passage.</p>
+      <p>A later step often depends on an entity that the question never names. Its passage shares few words with the question, so a scorer that looks at one passage at a time has little to go on.</p>
+      <p>That passage is often similar to the <em>other</em> gold passage. A graph over the passages can carry that signal.</p>
+    </div>
+    <figure class="fig">
+      <div class="chain" id="chain"></div>
+      <figcaption id="chain-cap"></figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>Where reranking sits</h3>
+      <p>Only the reranker changes between our four systems. The candidates, the cutoff and the language model stay fixed, so differences in the answer come from the ranking.</p>
+      <p>We measure twice: the ranking itself, then the answers a frozen language model produces from the top passages.</p>
+    </div>
+    <figure class="fig">
+      <div class="scroll-x">
+      <svg viewBox="0 0 760 190" role="img" aria-label="Pipeline: a question and its candidate passages go to a reranker, the top 5 go to a frozen language model, which produces an answer. Ranking metrics are measured after the reranker, answer metrics after the language model.">
+        <rect x="6" y="40" width="150" height="62" rx="5" class="f-bg s-ink3"/>
+        <text x="81" y="66" text-anchor="middle" class="t-strong">Question</text>
+        <text x="81" y="84" text-anchor="middle">+ 10 or 20 candidates</text>
+        <line x1="156" y1="71" x2="206" y2="71" class="s-ink" stroke-width="1.5" marker-end="url(#ar)"/>
+        <rect x="208" y="28" width="170" height="86" rx="5" class="f-bg s-ink" stroke-width="2"/>
+        <text x="293" y="52" text-anchor="middle" class="t-strong">Reranker</text>
+        <text x="293" y="70" text-anchor="middle">cosine · cross-encoder</text>
+        <text x="293" y="86" text-anchor="middle">GNN · hybrid</text>
+        <text x="293" y="104" text-anchor="middle" class="t-small">the only part that changes</text>
+        <line x1="378" y1="71" x2="428" y2="71" class="s-ink" stroke-width="1.5" marker-end="url(#ar)"/>
+        <rect x="430" y="40" width="96" height="62" rx="5" class="f-bg s-ink3"/>
+        <text x="478" y="66" text-anchor="middle" class="t-strong">Top 5</text>
+        <text x="478" y="84" text-anchor="middle">passages</text>
+        <line x1="526" y1="71" x2="566" y2="71" class="s-ink" stroke-width="1.5" marker-end="url(#ar)"/>
+        <rect x="568" y="40" width="96" height="62" rx="5" class="f-bg s-ink3" stroke-dasharray="5 4"/>
+        <text x="616" y="66" text-anchor="middle" class="t-strong">Frozen LLM</text>
+        <text x="616" y="84" text-anchor="middle">reads them</text>
+        <line x1="664" y1="71" x2="704" y2="71" class="s-ink" stroke-width="1.5" marker-end="url(#ar)"/>
+        <text x="708" y="75" class="t-strong">Answer</text>
+        <line x1="478" y1="102" x2="478" y2="138" class="s-ink3" stroke-dasharray="2 3"/>
+        <text x="478" y="154" text-anchor="middle" class="t-mono">recall@5 · recall@10</text>
+        <text x="478" y="170" text-anchor="middle" class="t-mono">all_gold@5</text>
+        <line x1="724" y1="84" x2="724" y2="138" class="s-ink3" stroke-dasharray="2 3"/>
+        <text x="752" y="154" text-anchor="end" class="t-mono">exact match · F1</text>
+        <text x="752" y="170" text-anchor="end" class="t-small">dashed = not built yet</text>
+      </svg>
+      </div>
+      <figcaption>The proposal's metric "Complete Support Recall@5" is <code>all_gold@5</code> in our code.</figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>Three datasets</h3>
+      <p>All three give every question its own small candidate set with labelled gold passages, so no retrieval index is needed.</p>
+      <p>The official test sets are unlabelled. We hold out 10% of train as validation and report on dev.</p>
+    </div>
+    <div class="plain">
+      <div class="tbl"><table>
+        <thead><tr><th>Dataset</th><th class="num">Train</th><th class="num">Dev</th><th class="num">Candidates</th><th class="num">Gold</th><th>What it adds</th></tr></thead>
+        <tbody>
+          <tr><td><strong>MuSiQue-Ans</strong></td><td class="num">19,938</td><td class="num">2,417</td><td class="num">20</td><td class="num">2–4</td><td>Hop count and step-by-step decomposition. Hardest candidate sets.</td></tr>
+          <tr><td><strong>2WikiMultiHopQA</strong></td><td class="num">167,454</td><td class="num">12,576</td><td class="num">10</td><td class="num">2–4</td><td>Question types and evidence triples.</td></tr>
+          <tr><td><strong>HotpotQA</strong> (distractor)</td><td class="num">90,447</td><td class="num">7,405</td><td class="num">10</td><td class="num">2</td><td>Two gold passages among eight distractors.</td></tr>
+        </tbody>
+      </table></div>
+      <p class="cap">Before any method sees the data we normalise whitespace, drop empty passages, merge exact duplicates, drop questions with fewer than two gold passages, and shuffle passage order per question so position cannot leak the answer.</p>
+    </div>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>Three research questions</h3>
+      <p>The first asks which reranker wins. The other two ask <em>when</em> a graph helps and how fragile it is.</p>
+    </div>
+    <div class="rqs">
+      <div class="rq"><div class="eyebrow">RQ1 · hybrid</div><p>Does a GNN that also sees cross-encoder scores beat the cross-encoder and the GNN alone?</p><a href="#rerankers">See the four rerankers</a></div>
+      <div class="rq"><div class="eyebrow">RQ2 · connectivity</div><p>Do graph rerankers help most when the gold passages are linked to each other in the graph?</p><a href="#experiments">See the connectivity groups</a></div>
+      <div class="rq"><div class="eyebrow">RQ3 · noise</div><p>How quickly do graph rerankers degrade when edges are randomly deleted or inserted?</p><a href="#experiments">Corrupt a graph yourself</a></div>
+    </div>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>Where the work stands</h3>
+      <p>As of 28 November. The poster is due 2 December at 10am.</p>
+    </div>
+    <div class="plain"><div class="tbl"><table>
+      <thead><tr><th>Piece</th><th>State</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Repo, Colab workflow, shared Drive</td><td><span class="pill done">merged</span></td><td>Andrew</td></tr>
+        <tr><td>Cleaning, shared evaluation, embedding cache, random and cosine baselines</td><td><span class="pill done">merged</span></td><td>Justin</td></tr>
+        <tr><td>Stale-cache guards, hop recount, architecture docs</td><td><span class="pill">branch, no PR</span></td><td>Andrew</td></tr>
+        <tr><td>Cross-encoder, graph builder, GNN, hybrid</td><td><span class="pill">branch, no PR</span></td><td>Bao. Run on 64 questions per dataset so far.</td></tr>
+        <tr><td>Full-data training runs on all three datasets</td><td><span class="pill none">not started</span></td><td></td></tr>
+        <tr><td>RQ2 connectivity analysis</td><td><span class="pill none">claimed</span></td><td>Nothing pushed yet.</td></tr>
+        <tr><td>RQ3 edge-noise sweep</td><td><span class="pill none">not started</span></td><td></td></tr>
+        <tr><td>Answer generation, exact match and F1</td><td><span class="pill none">not started</span></td><td>Largest remaining scope.</td></tr>
+        <tr><td>Qualitative cases, poster, final report</td><td><span class="pill none">not started</span></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </div>
+</section>
+
+<!-- ============================ FOUR RERANKERS ============================ -->
+<section class="view" id="v-rerankers" hidden>
+  <div class="lede">
+    <h2>Four rerankers, differing in what each one is allowed to see</h2>
+    <p>All four take the same question and candidates and return one score per passage. They differ in whether the question meets the passage's words, and whether passages can inform each other.</p>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>What each scorer sees</h3>
+      <p><strong>Cosine</strong> compresses the question and each passage separately, then compares the two vectors.</p>
+      <p>The <strong>cross-encoder</strong> reads the question and one passage together. It is far sharper, and still blind to the other passages.</p>
+      <p>The <strong>GNN</strong> starts from the cosine reranker's vectors and lets each passage hear from its neighbours before scoring.</p>
+      <p>The <strong>hybrid</strong> is the same GNN with the cross-encoder's score added to every node.</p>
+    </div>
+    <div class="plain">
+      <div class="mechs">
+        <figure class="mech">
+          <svg viewBox="0 0 260 150" role="img" aria-label="Cosine: question and passage are encoded separately into vectors, then compared with a dot product.">
+            <rect x="8" y="22" width="78" height="26" rx="4" class="f-bg s-ink3"/><text x="47" y="39" text-anchor="middle">question</text>
+            <rect x="8" y="102" width="78" height="26" rx="4" class="f-bg s-ink3"/><text x="47" y="119" text-anchor="middle">passage</text>
+            <line x1="86" y1="35" x2="108" y2="35" class="s-ink" marker-end="url(#ar)"/><line x1="86" y1="115" x2="108" y2="115" class="s-ink" marker-end="url(#ar)"/>
+            <rect x="110" y="22" width="44" height="26" rx="4" class="f-bg" stroke="var(--m-cos)" stroke-width="2"/><text x="132" y="39" text-anchor="middle" class="t-mono">BGE</text>
+            <rect x="110" y="102" width="44" height="26" rx="4" class="f-bg" stroke="var(--m-cos)" stroke-width="2"/><text x="132" y="119" text-anchor="middle" class="t-mono">BGE</text>
+            <line x1="154" y1="35" x2="170" y2="35" class="s-ink" marker-end="url(#ar)"/><line x1="154" y1="115" x2="170" y2="115" class="s-ink" marker-end="url(#ar)"/>
+            <g fill="var(--m-cos)"><rect x="173" y="30" width="8" height="10"/><rect x="183" y="30" width="8" height="10" opacity=".6"/><rect x="193" y="30" width="8" height="10" opacity=".85"/><rect x="203" y="30" width="8" height="10" opacity=".4"/>
+            <rect x="173" y="110" width="8" height="10" opacity=".5"/><rect x="183" y="110" width="8" height="10"/><rect x="193" y="110" width="8" height="10" opacity=".7"/><rect x="203" y="110" width="8" height="10" opacity=".9"/></g>
+            <line x1="192" y1="42" x2="192" y2="64" class="s-ink"/><line x1="192" y1="108" x2="192" y2="86" class="s-ink"/>
+            <circle cx="192" cy="75" r="11" class="f-bg s-ink"/><text x="192" y="79" text-anchor="middle" class="t-mono">cos</text>
+            <line x1="203" y1="75" x2="222" y2="75" class="s-ink" marker-end="url(#ar)"/><text x="226" y="79" class="t-strong">score</text>
+          </svg>
+          <h4><span class="dot" style="background:var(--m-cos)"></span>Cosine baseline</h4>
+          <p>Two separate encodings, one dot product. Cheap, and embeddings are computed once and cached.</p>
+        </figure>
+        <figure class="mech">
+          <svg viewBox="0 0 260 150" role="img" aria-label="Cross-encoder: question and passage are fed together into one transformer that outputs a score.">
+            <rect x="8" y="36" width="78" height="26" rx="4" class="f-bg s-ink3"/><text x="47" y="53" text-anchor="middle">question</text>
+            <rect x="8" y="88" width="78" height="26" rx="4" class="f-bg s-ink3"/><text x="47" y="105" text-anchor="middle">passage</text>
+            <line x1="86" y1="49" x2="116" y2="62" class="s-ink" marker-end="url(#ar)"/><line x1="86" y1="101" x2="116" y2="88" class="s-ink" marker-end="url(#ar)"/>
+            <rect x="118" y="30" width="82" height="90" rx="4" class="f-bg" stroke="var(--m-ce)" stroke-width="2"/>
+            <text x="159" y="66" text-anchor="middle" class="t-mono">MiniLM</text><text x="159" y="82" text-anchor="middle" class="t-small">every word of</text><text x="159" y="95" text-anchor="middle" class="t-small">both, together</text>
+            <line x1="200" y1="75" x2="222" y2="75" class="s-ink" marker-end="url(#ar)"/><text x="226" y="79" class="t-strong">score</text>
+          </svg>
+          <h4><span class="dot" style="background:var(--m-ce)"></span>Cross-encoder</h4>
+          <p>One transformer pass per question-passage pair. We fine-tune <code>ms-marco-MiniLM-L6-v2</code> on gold labels.</p>
+        </figure>
+        <figure class="mech">
+          <svg viewBox="0 0 260 150" role="img" aria-label="GNN: passages are nodes in a graph. Each node receives messages from its neighbours before it is scored.">
+            <g class="s-ink3" stroke-width="1.2"><line x1="60" y1="40" x2="130" y2="70"/><line x1="56" y1="112" x2="130" y2="70"/><line x1="130" y1="70" x2="200" y2="42"/><line x1="200" y1="42" x2="206" y2="110"/><line x1="56" y1="112" x2="60" y2="40"/></g>
+            <g stroke="var(--m-gnn)" stroke-width="2.2" marker-end="url(#ar)"><line x1="70" y1="44" x2="117" y2="64"/><line x1="67" y1="106" x2="117" y2="77"/><line x1="189" y1="46" x2="143" y2="65"/></g>
+            <g class="f-bg s-ink" stroke-width="1.5"><circle cx="60" cy="40" r="12"/><circle cx="56" cy="112" r="12"/><circle cx="200" cy="42" r="12"/><circle cx="206" cy="110" r="12"/></g>
+            <circle cx="130" cy="70" r="13" class="f-bg" stroke="var(--m-gnn)" stroke-width="2.5"/>
+            <text x="130" y="140" text-anchor="middle" class="t-small">node = passage vector + cosine to the question</text>
+          </svg>
+          <h4><span class="dot" style="background:var(--m-gnn)"></span>GNN</h4>
+          <p>A two-layer graph attention network over a similarity graph of the passages. Scores all of a question's passages at once.</p>
+        </figure>
+        <figure class="mech">
+          <svg viewBox="0 0 260 150" role="img" aria-label="Hybrid: the same graph, with each node also carrying the cross-encoder's score for that passage.">
+            <g class="s-ink3" stroke-width="1.2"><line x1="60" y1="40" x2="130" y2="70"/><line x1="56" y1="112" x2="130" y2="70"/><line x1="130" y1="70" x2="200" y2="42"/><line x1="200" y1="42" x2="206" y2="110"/><line x1="56" y1="112" x2="60" y2="40"/></g>
+            <g class="f-bg s-ink" stroke-width="1.5"><circle cx="60" cy="40" r="12"/><circle cx="56" cy="112" r="12"/><circle cx="200" cy="42" r="12"/><circle cx="206" cy="110" r="12"/></g>
+            <circle cx="130" cy="70" r="13" class="f-bg" stroke="var(--m-hyb)" stroke-width="2.5"/>
+            <g fill="var(--m-ce)"><rect x="70" y="24" width="12" height="9" rx="2"/><rect x="66" y="96" width="12" height="9" rx="2"/><rect x="210" y="26" width="12" height="9" rx="2"/><rect x="216" y="94" width="12" height="9" rx="2"/><rect x="141" y="53" width="12" height="9" rx="2"/></g>
+            <text x="130" y="140" text-anchor="middle" class="t-small">each node also carries its cross-encoder score</text>
+          </svg>
+          <h4><span class="dot" style="background:var(--m-hyb)"></span>Hybrid</h4>
+          <p>The cross-encoder is trained first and frozen. Its score becomes one extra input per node. Only the GNN learns.</p>
+        </figure>
+      </div>
+      <div class="tbl"><table>
+        <thead><tr><th>Reranker</th><th>Question meets passage words</th><th>Passages inform each other</th><th>Trained on our data</th></tr></thead>
+        <tbody>
+          <tr><td>Cosine</td><td>No</td><td>No</td><td>No</td></tr>
+          <tr><td>Cross-encoder</td><td>Yes</td><td>No</td><td>Fine-tuned</td></tr>
+          <tr><td>GNN</td><td>No</td><td>Yes</td><td>From scratch</td></tr>
+          <tr><td>Hybrid</td><td>Yes, through the frozen score</td><td>Yes</td><td>GNN part only</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>The same passages, ranked four ways</h3>
+      <p>Each line is one passage of the worked example. Follow the amber lines: those are the gold passages.</p>
+      <p>A reranker succeeds on this question when every amber line ends above the cutoff in its column.</p>
+      <p>Switch questions at the top. The rerankers do not fail on the same ones.</p>
+    </div>
+    <figure class="fig">
+      <div class="scroll-x" id="bump"></div>
+      <div class="legend"><span><span class="chip gold" style="width:1.1rem;height:1.1rem"></span> gold passage</span><span><span class="chip" style="width:1.1rem;height:1.1rem"></span> distractor</span><span><span class="ln" style="border-color:var(--ink)"></span> top-5 cutoff</span></div>
+      <figcaption id="bump-cap"></figcaption>
+    </figure>
+  </div>
+
+  <div class="caveat" data-caveat></div>
+</section>
+
+<!-- ============================ GRAPH AND GNN ============================ -->
+<section class="view" id="v-graph" hidden>
+  <div class="lede">
+    <h2>From twenty loose passages to a graph a network can read</h2>
+    <p>The GNN needs to know which passages are related. We build that graph from the passages alone, then let a small attention network pass information along its edges.</p>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>Build the graph</h3>
+      <p>Every passage links to its <strong>k most similar passages</strong> by embedding cosine. A link counts in both directions. Our setting is k = 3.</p>
+      <p>Gold labels are never used to choose edges, and the question is not a node. Nearby dots are similar passages.</p>
+      <p>Drag k and watch the trained GNN re-rank. At k = 0 no passage can hear another.</p>
+    </div>
+    <figure class="fig">
+      <div class="controls">
+        <label for="knn-k">Neighbours k <input type="range" id="knn-k" min="0" max="6" value="3"> <output id="knn-out">3</output></label>
+      </div>
+      <div class="split">
+        <div id="g-build"></div>
+        <div class="mini" id="g-build-list"></div>
+      </div>
+      <div class="readout" id="g-build-readout"></div>
+      <div class="legend"><span><span class="chip gold" style="width:1.1rem;height:1.1rem"></span> gold</span><span><span class="ln" style="border-color:var(--gold);border-top-width:3px"></span> edge between two gold passages</span><span><span class="chip" style="width:1.1rem;height:1.1rem;border-color:var(--ink);border-width:2.5px"></span> in the GNN's top 5</span></div>
+      <figcaption>Hover a passage to see the neighbours it picked. The model's weights were trained at k = 3, so other settings show what the same weights do on a different graph.</figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>What a node holds</h3>
+      <p>Each node starts as 769 numbers: the passage's embedding, plus one number for how similar the passage is to the question.</p>
+      <p>That last number is the only place the question enters the GNN. The hybrid appends a second one, the cross-encoder's raw score.</p>
+    </div>
+    <figure class="fig">
+      <div class="scroll-x">
+      <svg viewBox="0 0 720 118" role="img" aria-label="A node's input: 768 numbers of passage embedding, one number for cosine similarity to the question, and for the hybrid one more number, the cross-encoder score.">
+        <rect x="6" y="20" width="520" height="34" rx="3" class="f-bg" stroke="var(--m-gnn)" stroke-width="2"/>
+        <g stroke="var(--m-gnn)" opacity=".35"><line x1="32" y1="20" x2="32" y2="54"/><line x1="58" y1="20" x2="58" y2="54"/><line x1="84" y1="20" x2="84" y2="54"/><line x1="110" y1="20" x2="110" y2="54"/><line x1="448" y1="20" x2="448" y2="54"/><line x1="474" y1="20" x2="474" y2="54"/><line x1="500" y1="20" x2="500" y2="54"/></g>
+        <text x="266" y="42" text-anchor="middle" class="t-strong">passage embedding · 768 numbers</text>
+        <rect x="532" y="20" width="56" height="34" rx="3" fill="var(--m-cos)"/>
+        <rect x="594" y="20" width="56" height="34" rx="3" class="f-bg" stroke="var(--m-ce)" stroke-width="2" stroke-dasharray="5 3"/>
+        <line x1="560" y1="54" x2="560" y2="72" class="s-ink3"/><text x="560" y="86" text-anchor="middle">cosine to</text><text x="560" y="101" text-anchor="middle">the question</text>
+        <line x1="622" y1="54" x2="622" y2="72" class="s-ink3"/><text x="660" y="86" text-anchor="middle">cross-encoder score</text><text x="660" y="101" text-anchor="middle">(hybrid only)</text>
+        <text x="6" y="86">BGE-base, unit length</text><text x="6" y="101" class="t-small">same vectors the cosine baseline uses</text>
+      </svg>
+      </div>
+      <figcaption>GNN input is 769 wide, hybrid input is 770 wide. Everything else about the two models is identical.</figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>Who listens to whom</h3>
+      <p>In a graph attention layer, each passage rebuilds its own representation as a weighted mix of itself and its neighbours. The weights are learned.</p>
+      <p>Select a passage. Edge thickness shows how much attention it pays to each neighbour in the trained model's first layer, averaged over the four heads.</p>
+    </div>
+    <figure class="fig">
+      <div class="split">
+        <div id="g-att"></div>
+        <div class="mini" id="g-att-list"></div>
+      </div>
+      <figcaption>Attention weights are computed in your browser from the trained weights of the small local run, on the k = 3 graph.</figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>The network and how it learns</h3>
+      <p>Two attention layers. The first mixes neighbours into a 256-number state per passage. The second mixes again and outputs one score.</p>
+      <p>Two layers means a passage can be influenced by passages up to two edges away.</p>
+      <p>Training asks one question of every passage: is it gold? The best epoch is the one with the highest all_gold@5 on validation. Dev is never used for selection.</p>
+    </div>
+    <div class="plain">
+      <figure class="fig">
+        <div class="scroll-x">
+        <svg viewBox="0 0 760 130" role="img" aria-label="Network: node features go through a graph attention layer with four heads of 64 units, then ReLU and dropout, then a second attention layer with one head that outputs one score per passage.">
+          <rect x="6" y="34" width="108" height="56" rx="5" class="f-bg s-ink3"/><text x="60" y="58" text-anchor="middle" class="t-strong">Node features</text><text x="60" y="76" text-anchor="middle" class="t-mono">N × 769</text>
+          <line x1="114" y1="62" x2="150" y2="62" class="s-ink" stroke-width="1.5" marker-end="url(#ar)"/>
+          <rect x="152" y="24" width="150" height="76" rx="5" class="f-bg" stroke="var(--m-gnn)" stroke-width="2"/><text x="227" y="50" text-anchor="middle" class="t-strong">Attention layer 1</text><text x="227" y="68" text-anchor="middle" class="t-mono">4 heads × 64</text><text x="227" y="86" text-anchor="middle" class="t-small">mix with neighbours</text>
+          <line x1="302" y1="62" x2="338" y2="62" class="s-ink" stroke-width="1.5" marker-end="url(#ar)"/>
+          <rect x="340" y="34" width="96" height="56" rx="5" class="f-bg s-ink3"/><text x="388" y="58" text-anchor="middle" class="t-strong">ReLU</text><text x="388" y="76" text-anchor="middle" class="t-mono">dropout 0.1</text>
+          <line x1="436" y1="62" x2="472" y2="62" class="s-ink" stroke-width="1.5" marker-end="url(#ar)"/>
+          <rect x="474" y="24" width="150" height="76" rx="5" class="f-bg" stroke="var(--m-gnn)" stroke-width="2"/><text x="549" y="50" text-anchor="middle" class="t-strong">Attention layer 2</text><text x="549" y="68" text-anchor="middle" class="t-mono">1 head × 1</text><text x="549" y="86" text-anchor="middle" class="t-small">mix again</text>
+          <line x1="624" y1="62" x2="660" y2="62" class="s-ink" stroke-width="1.5" marker-end="url(#ar)"/>
+          <text x="666" y="58" class="t-strong">One score</text><text x="666" y="76">per passage</text>
+          <text x="6" y="122" class="t-small">Each layer also lets a node attend to itself, so an isolated passage keeps its own information.</text>
+        </svg>
+        </div>
+      </figure>
+      <div class="tbl"><table>
+        <thead><tr><th></th><th>GNN and hybrid</th><th>Cross-encoder</th></tr></thead>
+        <tbody>
+          <tr><td>Training example</td><td>One question's whole graph</td><td>One question-passage pair</td></tr>
+          <tr><td>Target</td><td colspan="2">Is this passage gold? Binary cross-entropy on every candidate, unweighted</td></tr>
+          <tr><td>Optimiser</td><td>AdamW, learning rate 1e-3, 32 graphs per batch</td><td>AdamW, learning rate 2e-5, 16 pairs per batch</td></tr>
+          <tr><td>What trains</td><td>The two attention layers only. Embeddings and cross-encoder scores are frozen.</td><td>The whole transformer</td></tr>
+          <tr><td>Model selection</td><td colspan="2">Best validation all_gold@5, ties broken by recall@5</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="caveat" data-caveat></div>
+</section>
+
+<!-- ============================ EXPERIMENTS ============================ -->
+<section class="view" id="v-experiments" hidden>
+  <div class="lede">
+    <h2>Three experiments, one per research question</h2>
+    <p>Each figure below is the kind of result we will report. The numbers in them come from a small local run and only show the shape of the analysis.</p>
+  </div>
+  <div class="caveat" data-caveat></div>
+
+  <div class="exhibit">
+    <div class="note">
+      <div class="eyebrow">RQ1</div>
+      <h3>Does the hybrid beat its parts?</h3>
+      <p>Train all four rerankers on the same split, score the same dev questions, compare on the same metrics.</p>
+      <p>Two extra rows calibrate the table. <strong>Random</strong> is the floor. The <strong>GNN with no edges</strong> shows how much of the GNN's score comes from message passing at all.</p>
+    </div>
+    <div class="plain">
+      <div class="tbl"><table id="metrics-table"></table></div>
+      <p class="cap" id="metrics-cap"></p>
+    </div>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <div class="eyebrow">RQ2</div>
+      <h3>Does it matter whether gold passages are linked?</h3>
+      <p>Sort every dev question by how its gold passages sit in the graph, then compare the rerankers inside each group.</p>
+      <p>One workable definition, used here: look only at edges that join two gold passages. All gold in one piece is <strong>connected</strong>, none joined is <strong>disconnected</strong>, anything between is <strong>partial</strong>.</p>
+      <p>If graph rerankers work the way we think, their advantage should be largest on the left and vanish on the right.</p>
+    </div>
+    <figure class="fig">
+      <div class="minis" id="conn-examples"></div>
+      <div id="conn-chart"></div>
+      <div class="legend" id="conn-legend"></div>
+      <figcaption id="conn-cap"></figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <div class="eyebrow">RQ3</div>
+      <h3>How fragile is the graph?</h3>
+      <p>Corrupt the worked example's graph and watch the two graph rerankers respond. The cross-encoder never sees the graph, so its ranking cannot move.</p>
+      <p><strong>Delete</strong> removes a share of the edges at random. <strong>Insert</strong> adds that many random edges between unlinked passages.</p>
+      <p>The models are not retrained. This tests what happens when the graph at test time is worse than the graph the model learned on.</p>
+    </div>
+    <figure class="fig">
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Noise type"><button type="button" id="noise-del" aria-pressed="true">Delete edges</button><button type="button" id="noise-add" aria-pressed="false">Insert edges</button></div>
+        <label for="noise-rate">Share of edges <input type="range" id="noise-rate" min="0" max="50" step="10" value="30"> <output id="noise-out">30%</output></label>
+        <button type="button" class="btn" id="noise-resample">Draw again</button>
+      </div>
+      <div class="split">
+        <div id="g-noise"></div>
+        <div class="minis" id="g-noise-lists" style="grid-template-columns:minmax(0,1fr)"></div>
+      </div>
+      <div class="legend"><span><span class="ln" style="border-color:var(--noise);border-top-style:dashed"></span> deleted edge</span><span><span class="ln" style="border-color:var(--noise)"></span> inserted edge</span><span><span class="chip gold" style="width:1.1rem;height:1.1rem"></span> gold</span></div>
+      <figcaption>Both graph rerankers are run in your browser on the corrupted graph, using the trained weights from the small local run.</figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>The same test over every dev question</h3>
+      <p>Repeat the corruption on all dev questions, at each noise level, and track all_gold@5.</p>
+      <p>The cross-encoder and cosine lines are flat by construction. The question is how far the graph rerankers fall, and whether the hybrid's extra signal cushions it.</p>
+    </div>
+    <figure class="fig">
+      <div id="noise-chart"></div>
+      <div class="legend" id="noise-legend"></div>
+      <figcaption id="noise-cap"></figcaption>
+    </figure>
+  </div>
+
+  <div class="exhibit">
+    <div class="note">
+      <h3>Still to decide</h3>
+      <p>Open choices that change what the final figures mean.</p>
+    </div>
+    <div class="plain"><div class="tbl"><table>
+      <thead><tr><th>Choice</th><th>Options</th></tr></thead>
+      <tbody>
+        <tr><td>Connectivity definition (RQ2)</td><td>Gold-to-gold edges only, as here, or also count gold passages joined through a distractor.</td></tr>
+        <tr><td>Noise at train time (RQ3)</td><td>Corrupt only the test graph, as here, or also retrain on corrupted graphs.</td></tr>
+        <tr><td>Hybrid's training scores</td><td>The cross-encoder scores the same questions it was trained on, so its scores look better in training than on dev. Scoring train out-of-fold would fix this.</td></tr>
+        <tr><td>Attention layer type</td><td>With the current layer, two passages that share the same neighbourhood get exactly the same score, so the GNN cannot rank inside a tight cluster. A skip connection or the GATv2 layer would let each passage keep its own signal.</td></tr>
+        <tr><td>Answer generation</td><td>Which frozen model, how many questions, and whether to cover all three datasets or one.</td></tr>
+      </tbody>
+    </table></div></div>
+  </div>
+</section>
+
+</main>
+<div id="tip" hidden></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
